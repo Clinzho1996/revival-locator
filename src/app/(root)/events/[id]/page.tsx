@@ -1,173 +1,411 @@
-'use client';
+"use client";
 
-import { use } from 'react';
-import { MOCK_EVENTS } from '@/lib/data';
-import { notFound } from 'next/navigation';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Calendar, MapPin, Users, Share2, Heart, Info, Clock, ShieldCheck } from 'lucide-react';
-import { format } from 'date-fns';
-import { toast } from 'sonner';
-import { ReviewSystem } from '@/components/ReviewSystem';
-import { CommunityForum } from '@/components/CommunityForum';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CommunityForum } from "@/components/CommunityForum";
+import { ReviewSystem } from "@/components/ReviewSystem";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useRevival } from "@/hooks/useRevival";
+import { format, parseISO } from "date-fns";
+import {
+	Calendar,
+	Clock,
+	Heart,
+	Info,
+	Loader2,
+	MapPin,
+	Share2,
+	ShieldCheck,
+	Users,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { use, useEffect, useState } from "react";
+import { toast } from "sonner";
 
-export default function EventDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const event = MOCK_EVENTS.find((e) => e.id === id);
+export default function EventDetailsPage({
+	params,
+}: {
+	params: Promise<{ id: string }>;
+}) {
+	const { id } = use(params);
+	const router = useRouter();
+	const {
+		getEventById,
+		selectedEvent,
+		isLoading,
+		error,
+		user,
+		isAuthenticated,
+		toggleBookmark,
+		isBookmarked,
+		createReview,
+		getReviewsByEvent,
+		reviews,
+		sendMessage,
+		getEventMessages,
+		messages,
+	} = useRevival();
 
-  if (!event) {
-    notFound();
-  }
+	const [isInterested, setIsInterested] = useState(false);
+	const [isSharing, setIsSharing] = useState(false);
 
-  const handleInterest = () => {
-    toast.success("Awesome! We'll notify you about updates for this event.", {
-      description: `You've expressed interest in ${event.title}.`,
-      action: {
-        label: 'Add to Calendar',
-        onClick: () => toast.info('Integration coming soon!'),
-      },
-    });
-  };
+	// Fetch event data on mount
+	useEffect(() => {
+		if (id) {
+			getEventById(id);
+			getReviewsByEvent(id);
+			getEventMessages(id);
+		}
+	}, [id]);
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Banner Section */}
-      <div className="relative h-[400px] w-full overflow-hidden">
-        <img
-          src={event.imageUrl}
-          alt={event.title}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-        <div className="container mx-auto px-4 absolute bottom-0 pb-12">
-          <div className="flex flex-col md:flex-row justify-between items-end gap-6">
-            <div className="space-y-4 max-w-2xl">
-              <Badge className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-1.5 text-sm rounded-full">
-                {event.category}
-              </Badge>
-              <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-foreground drop-shadow-sm">
-                {event.title}
-              </h1>
-              <div className="flex flex-wrap items-center gap-6 text-muted-foreground font-medium">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-primary" />
-                  {format(new Date(event.date), 'MMMM d, yyyy')}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-primary" />
-                  {event.startTime}
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-primary" />
-                  {event.location}
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-3 w-full md:w-auto">
-              <Button onClick={handleInterest} className="flex-grow md:flex-grow-0 h-14 px-8 bg-primary hover:bg-primary/90 text-lg rounded-2xl shadow-lg shadow-primary/20 gap-2">
-                <Heart className="w-5 h-5 fill-current" />
-                I'm Interested
-              </Button>
-              <Button variant="outline" size="icon" className="h-14 w-14 rounded-2xl border-primary/20 hover:bg-primary/5">
-                <Share2 className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+	// Check if user has already bookmarked this event
+	useEffect(() => {
+		if (selectedEvent && isAuthenticated) {
+			setIsInterested(isBookmarked(selectedEvent._id));
+		}
+	}, [selectedEvent, isAuthenticated, isBookmarked]);
 
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-12">
-            <section className="space-y-6">
-              <h2 className="text-3xl font-bold border-l-4 border-primary pl-4">About the Event</h2>
-              <div className="prose prose-neutral dark:prose-invert max-w-none text-muted-foreground text-lg leading-relaxed">
-                <p>{event.longDescription || event.description}</p>
-              </div>
-            </section>
+	if (isLoading && !selectedEvent) {
+		return (
+			<div className="min-h-screen flex items-center justify-center">
+				<div className="text-center space-y-4">
+					<Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
+					<p className="text-muted-foreground">Loading event details...</p>
+				</div>
+			</div>
+		);
+	}
 
-            <section className="bg-primary/5 rounded-[2rem] p-8 space-y-4">
-              <div className="flex items-center gap-3 text-primary">
-                <ShieldCheck className="w-6 h-6" />
-                <h3 className="font-bold text-xl uppercase tracking-wider">Note to attendees</h3>
-              </div>
-              <p className="text-muted-foreground opacity-90">
-                This event is open to everyone. Please arrive at least 30 minutes before the start time to ensure proper seating and preparation. Registration is free but highly encouraged.
-              </p>
-            </section>
+	if (error || !selectedEvent) {
+		return (
+			<div className="min-h-screen flex items-center justify-center">
+				<div className="text-center space-y-4 max-w-md mx-auto px-4">
+					<div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto">
+						<Info className="w-10 h-10 text-red-500" />
+					</div>
+					<h2 className="text-2xl font-bold">Event not found</h2>
+					<p className="text-muted-foreground">
+						{error ||
+							"The event you're looking for doesn't exist or has been removed."}
+					</p>
+					<Button onClick={() => router.push("/")} className="mt-4">
+						Back to Home
+					</Button>
+				</div>
+			</div>
+		);
+	}
 
-            <Tabs defaultValue="reviews" className="w-full">
-              <TabsList className="bg-primary/5 p-1 mb-6 rounded-2xl w-full justify-start sm:w-auto">
-                <TabsTrigger value="reviews" className="rounded-xl px-8 h-12 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  Experience & Reviews
-                </TabsTrigger>
-                <TabsTrigger value="forum" className="rounded-xl px-8 h-12 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  Community Chat
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="reviews">
-                <ReviewSystem reviews={event.reviews} eventId={event.id} />
-              </TabsContent>
-              <TabsContent value="forum">
-                <CommunityForum messages={event.forumMessages} eventId={event.id} />
-              </TabsContent>
-            </Tabs>
-          </div>
+	const handleInterest = async () => {
+		if (!isAuthenticated) {
+			toast.error("Authentication required", {
+				description: "Please login to express interest in this event",
+				action: {
+					label: "Login",
+					onClick: () => router.push("/login"),
+				},
+			});
+			return;
+		}
 
-          {/* Sidebar */}
-          <div className="space-y-8">
-            <Card className="rounded-[2rem] border-primary/10 shadow-xl overflow-hidden">
-              <CardContent className="p-8 space-y-6">
-                <h3 className="text-xl font-bold">Event Details</h3>
-                <div className="space-y-4">
-                  <div className="flex gap-4 items-start">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Users className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Interest Level</p>
-                      <p className="font-bold">{event.interestCount.toLocaleString()} Worshippers</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-4 items-start">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <MapPin className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Full Address</p>
-                      <p className="font-bold">{event.address}</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-4 items-start">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Info className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Organizer</p>
-                      <p className="font-bold">{event.organizer}</p>
-                    </div>
-                  </div>
-                </div>
-                <hr className="border-primary/5" />
-                <Button variant="outline" className="w-full h-12 rounded-xl group hover:border-primary">
-                  Contact Organizer
-                </Button>
-              </CardContent>
-            </Card>
+		try {
+			await toggleBookmark(selectedEvent._id);
+			const newState = !isInterested;
+			setIsInterested(newState);
 
-            <div className="bg-gradient-to-br from-primary/10 to-transparent p-8 rounded-[2rem] border border-primary/10 space-y-4">
-              <h4 className="font-bold text-lg">Proximity Check</h4>
-              <p className="text-sm text-muted-foreground">
-                This event is happening in <strong>{event.location}</strong>.
-                Based on your current location, it is one of the closest gatherings this week.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+			toast.success(newState ? "Interest registered! 🎉" : "Interest removed", {
+				description: newState
+					? `You've expressed interest in ${selectedEvent.title}. We'll notify you about updates.`
+					: `You've removed your interest from ${selectedEvent.title}.`,
+				action: newState
+					? {
+							label: "Add to Calendar",
+							onClick: () => toast.info("Calendar integration coming soon!"),
+						}
+					: undefined,
+			});
+		} catch (error) {
+			toast.error("Failed to register interest", {
+				description: "Please try again later",
+			});
+		}
+	};
+
+	const handleShare = async () => {
+		setIsSharing(true);
+		try {
+			if (navigator.share) {
+				await navigator.share({
+					title: selectedEvent.title,
+					text: selectedEvent.description,
+					url: window.location.href,
+				});
+			} else {
+				await navigator.clipboard.writeText(window.location.href);
+				toast.success("Link copied!", {
+					description: "Share this event with your friends and family.",
+				});
+			}
+		} catch (error) {
+			if (error instanceof Error && error.name !== "AbortError") {
+				toast.error("Failed to share", {
+					description: "Please try again or copy the link manually.",
+				});
+			}
+		} finally {
+			setIsSharing(false);
+		}
+	};
+
+	const eventDate = parseISO(selectedEvent.date);
+	const location =
+		typeof selectedEvent.location === "object"
+			? `${selectedEvent.location.address}, ${selectedEvent.location.city || ""} ${selectedEvent.location.state || ""}`
+			: selectedEvent.location;
+
+	const categoryName = selectedEvent.category
+		? typeof selectedEvent.category === "object"
+			? selectedEvent.category.name
+			: selectedEvent.category
+		: "Uncategorized";
+
+	const bannerImage =
+		selectedEvent.image ||
+		selectedEvent.banner ||
+		"https://images.unsplash.com/photo-1438032945730-e6e5b1a5b6d3?w=1200";
+
+	return (
+		<div className="min-h-screen bg-background">
+			{/* Hero Banner Section */}
+			<div className="relative h-[400px] w-full mx-auto overflow-hidden">
+				<img
+					src={bannerImage}
+					alt={selectedEvent.title}
+					className="w-full h-full object-cover mx-auto"
+				/>
+				<div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+				<div className="container px-4 absolute bottom-0 pb-12">
+					<div className="flex flex-col md:flex-row justify-between items-end gap-6">
+						<div className="space-y-4 max-w-2xl mx-auto">
+							<div className="flex flex-wrap gap-2">
+								<Badge className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-1.5 text-sm rounded-full">
+									{categoryName}
+								</Badge>
+								{selectedEvent.status === "pending" && (
+									<Badge
+										variant="secondary"
+										className="bg-yellow-500/20 text-yellow-700 px-4 py-1.5 text-sm rounded-full">
+										Pending Approval
+									</Badge>
+								)}
+								{selectedEvent.isFree && (
+									<Badge
+										variant="secondary"
+										className="bg-green-500/20 text-green-700 px-4 py-1.5 text-sm rounded-full">
+										Free Event
+									</Badge>
+								)}
+							</div>
+							<h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-foreground drop-shadow-sm">
+								{selectedEvent.title}
+							</h1>
+							<div className="flex flex-wrap items-center gap-6 text-muted-foreground font-medium">
+								<div className="flex items-center gap-2">
+									<Calendar className="w-5 h-5 text-primary" />
+									{format(eventDate, "MMMM d, yyyy")}
+								</div>
+								{selectedEvent.time && (
+									<div className="flex items-center gap-2">
+										<Clock className="w-5 h-5 text-primary" />
+										{selectedEvent.time}
+									</div>
+								)}
+								<div className="flex items-center gap-2">
+									<MapPin className="w-5 h-5 text-primary" />
+									{location}
+								</div>
+							</div>
+						</div>
+						<div className="flex gap-3 w-full md:w-auto">
+							<Button
+								onClick={handleInterest}
+								className={`flex-grow md:flex-grow-0 h-14 px-8 text-lg rounded-2xl shadow-lg gap-2 ${
+									isInterested
+										? "bg-red-500 hover:bg-red-600 text-white"
+										: "bg-primary hover:bg-primary/90 shadow-primary/20"
+								}`}>
+								<Heart
+									className={`w-5 h-5 ${isInterested ? "fill-current" : ""}`}
+								/>
+								{isInterested ? "Interested" : "I'm Interested"}
+							</Button>
+							<Button
+								variant="outline"
+								size="icon"
+								className="h-14 w-14 rounded-2xl border-primary/20 hover:bg-primary/5"
+								onClick={handleShare}
+								disabled={isSharing}>
+								<Share2 className="w-5 h-5" />
+							</Button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div className="container mx-auto px-4 py-12">
+				<div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+					{/* Main Content */}
+					<div className="lg:col-span-2 space-y-12">
+						<section className="space-y-6">
+							<h2 className="text-3xl font-bold border-l-4 border-primary pl-4">
+								About the Event
+							</h2>
+							<div className="prose prose-neutral dark:prose-invert max-w-none text-muted-foreground text-lg leading-relaxed">
+								<p>{selectedEvent.description}</p>
+							</div>
+						</section>
+
+						<section className="bg-primary/5 rounded-[2rem] p-8 space-y-4">
+							<div className="flex items-center gap-3 text-primary">
+								<ShieldCheck className="w-6 h-6" />
+								<h3 className="font-bold text-xl uppercase tracking-wider">
+									Note to attendees
+								</h3>
+							</div>
+							<p className="text-muted-foreground opacity-90">
+								This event is open to everyone. Please arrive at least 30
+								minutes before the start time to ensure proper seating and
+								preparation.
+								{selectedEvent.isFree
+									? " Registration is free but highly encouraged."
+									: " Registration is required for this event."}
+							</p>
+						</section>
+
+						<Tabs defaultValue="reviews" className="w-full">
+							<TabsList className="bg-primary/5 p-1 mb-6 rounded-2xl w-full justify-start sm:w-auto">
+								<TabsTrigger
+									value="reviews"
+									className="rounded-xl px-8 h-12 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+									Experience & Reviews ({reviews.length})
+								</TabsTrigger>
+								<TabsTrigger
+									value="forum"
+									className="rounded-xl px-8 h-12 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+									Community Chat ({messages.length})
+								</TabsTrigger>
+							</TabsList>
+							<TabsContent value="reviews">
+								<ReviewSystem
+									reviews={reviews.map((r) => ({
+										id: r._id,
+										userName:
+											typeof r.user === "object" ? r.user.name : "Anonymous",
+										userAvatar: "",
+										rating: r.rating,
+										createdAt: r.createdAt || new Date().toISOString(),
+										comment: r.comment,
+										userId: typeof r.user === "object" ? r.user._id : "",
+									}))}
+									eventId={selectedEvent._id}
+								/>
+							</TabsContent>
+							<TabsContent value="forum">
+								<CommunityForum
+									messages={messages.map((m) => ({
+										id: m._id,
+										userName:
+											typeof m.user === "object" ? m.user.name : "Anonymous",
+										userAvatar: "",
+										text: m.message,
+										timestamp: m.createdAt,
+										parentId: m.parent || undefined,
+									}))}
+									eventId={selectedEvent._id}
+								/>
+							</TabsContent>
+						</Tabs>
+					</div>
+
+					{/* Sidebar */}
+					<div className="space-y-8">
+						<Card className="rounded-[2rem] border-primary/10 shadow-xl overflow-hidden">
+							<CardContent className="p-8 space-y-6">
+								<h3 className="text-xl font-bold">Event Details</h3>
+								<div className="space-y-4">
+									<div className="flex gap-4 items-start">
+										<div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+											<Users className="w-5 h-5 text-primary" />
+										</div>
+										<div>
+											<p className="text-sm text-muted-foreground">
+												Interest Level
+											</p>
+											<p className="font-bold">
+												{selectedEvent.attendees?.toLocaleString() || 0}{" "}
+												Worshippers
+											</p>
+										</div>
+									</div>
+									<div className="flex gap-4 items-start">
+										<div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+											<MapPin className="w-5 h-5 text-primary" />
+										</div>
+										<div>
+											<p className="text-sm text-muted-foreground">
+												Full Address
+											</p>
+											<p className="font-bold">{location}</p>
+										</div>
+									</div>
+									<div className="flex gap-4 items-start">
+										<div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+											<Info className="w-5 h-5 text-primary" />
+										</div>
+										<div>
+											<p className="text-sm text-muted-foreground">Organizer</p>
+											<p className="font-bold">
+												{typeof selectedEvent.organizer === "object"
+													? selectedEvent.organizer.name
+													: "Event Organizer"}
+											</p>
+										</div>
+									</div>
+									{!selectedEvent.isFree && selectedEvent.price && (
+										<div className="flex gap-4 items-start">
+											<div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+												<Info className="w-5 h-5 text-primary" />
+											</div>
+											<div>
+												<p className="text-sm text-muted-foreground">Price</p>
+												<p className="font-bold text-primary">
+													${selectedEvent.price}
+												</p>
+											</div>
+										</div>
+									)}
+								</div>
+								<hr className="border-primary/5" />
+								<Button
+									variant="outline"
+									className="w-full h-12 rounded-xl group hover:border-primary">
+									Contact Organizer
+								</Button>
+							</CardContent>
+						</Card>
+
+						<div className="bg-gradient-to-br from-primary/10 to-transparent p-8 rounded-[2rem] border border-primary/10 space-y-4">
+							<h4 className="font-bold text-lg">Proximity Check</h4>
+							<p className="text-sm text-muted-foreground">
+								This event is happening in <strong>{location}</strong>. Based on
+								your current location, it is one of the closest gatherings this
+								week.
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	);
 }

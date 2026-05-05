@@ -8,6 +8,7 @@ export interface User {
 	_id: string;
 	name: string;
 	email: string;
+	avatar?: string;
 	role: "user" | "admin";
 	bookmarks: string[];
 	createdAt: string;
@@ -35,6 +36,7 @@ export interface Event {
 	isFree?: boolean;
 	price?: number;
 	image?: string;
+	banner?: string;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -178,6 +180,10 @@ interface RevivalState {
 	logout: () => void;
 	getProfile: () => Promise<void>;
 	updateProfile: (data: Partial<User>) => Promise<void>;
+	changePassword: (
+		currentPassword: string,
+		newPassword: string,
+	) => Promise<void>;
 
 	// Event actions
 	createEvent: (eventData: Partial<Event>) => Promise<void>;
@@ -382,6 +388,23 @@ export const useRevivalStore = create<RevivalState>()(
 				} catch (error: any) {
 					set({
 						error: error.response?.data?.message || "Failed to update profile",
+						isLoading: false,
+					});
+					throw error;
+				}
+			},
+			changePassword: async (currentPassword: string, newPassword: string) => {
+				set({ isLoading: true, error: null });
+				try {
+					const response = await api.put("/users/change-password", {
+						currentPassword,
+						newPassword,
+					});
+					set({ isLoading: false });
+					return response.data;
+				} catch (error: any) {
+					set({
+						error: error.response?.data?.message || "Failed to change password",
 						isLoading: false,
 					});
 					throw error;
