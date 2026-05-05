@@ -26,13 +26,13 @@ export interface Event {
 	_id: string;
 	title: string;
 	description: string;
-	category: string | Category | null;
+	category: string | Category ;
 	location: Location;
 	date: string;
 	time?: string;
 	organizer: string | User;
 	attendees: number;
-	status: "pending" | "approved" | "rejected";
+	status: string;
 	isFree?: boolean;
 	price?: number;
 	image?: string;
@@ -43,7 +43,9 @@ export interface Event {
 
 export interface Category {
 	_id: string;
+	icon: string;
 	name: string;
+	eventCount: number;
 	description?: string;
 }
 
@@ -54,7 +56,7 @@ export interface Resource {
 	type: string;
 	fileUrl?: string;
 	uploadedBy: string | User;
-	createdAt?: string;
+	createdAt: string;
 }
 
 export interface Review {
@@ -202,6 +204,15 @@ interface RevivalState {
 	createResource: (resourceData: Partial<Resource>) => Promise<void>;
 	getResources: () => Promise<void>;
 	deleteResource: (id: string) => Promise<void>;
+	updateResource: (
+		id: string,
+		data: {
+			title: string;
+			description?: string;
+			type: string;
+			fileUrl: string;
+		},
+	) => Promise<void>;
 
 	// Review actions
 	createReview: (
@@ -232,11 +243,19 @@ interface RevivalState {
 	// Category actions (admin only)
 	createCategory: (name: string, description?: string) => Promise<void>;
 	getCategories: () => Promise<void>;
+	updateCategory: (
+		id: string,
+		data: { name: string; description?: string },
+	) => Promise<void>;
 	deleteCategory: (id: string) => Promise<void>;
 
 	// Admin actions
 	getAnalytics: () => Promise<void>;
 	getDashboard: () => Promise<void>;
+	getAllUsers: () => Promise<User[]>;
+	updateUserRole: (userId: string, role: "user" | "admin") => Promise<void>;
+	deleteUser: (userId: string) => Promise<void>;
+	allUsers: User[];
 
 	// Utility
 	clearError: () => void;
@@ -263,6 +282,7 @@ export const useRevivalStore = create<RevivalState>()(
 	persist(
 		(set, get) => ({
 			// Initial state
+			allUsers: [],
 			user: null,
 			token: null,
 			isAuthenticated: false,
@@ -608,6 +628,36 @@ export const useRevivalStore = create<RevivalState>()(
 				}
 			},
 
+			updateResource: async (
+				id: string,
+				data: {
+					title: string;
+					description?: string;
+					type: string;
+					fileUrl: string;
+				},
+			) => {
+				set({ isLoading: true, error: null });
+				try {
+					const response = await api.put(`/resources/${id}`, data);
+
+					// Update the resource in the resources array
+					set((state) => ({
+						resources: state.resources.map((resource: Resource) =>
+							resource._id === id ? { ...resource, ...data } : resource,
+						),
+						isLoading: false,
+					}));
+
+					return response.data;
+				} catch (error: any) {
+					set({
+						error: error.response?.data?.message || "Failed to update resource",
+						isLoading: false,
+					});
+					throw error;
+				}
+			},
 			getResources: async () => {
 				set({ isLoading: true, error: null });
 				try {
@@ -866,6 +916,74 @@ export const useRevivalStore = create<RevivalState>()(
 				}
 			},
 
+			// Add these to your store actions:
+
+			// Admin User Management
+			getAllUsers: async () => {
+				set({ isLoading: true, error: null });
+				try {
+					const response = await api.get("/users/all");
+					set({
+						allUsers: response.data.data,
+						isLoading: false,
+					});
+					return response.data.data;
+				} catch (error: any) {
+					set({
+						error: error.response?.data?.message || "Failed to fetch users",
+						isLoading: false,
+					});
+					throw error;
+				}
+			},
+
+			updateUserRole: async (userId: string, role: "user" | "admin") => {
+				set({ isLoading: true, error: null });
+				try {
+					const response = await api.put(`/users/${userId}/role`, { role });
+					set({ isLoading: false });
+
+					// Update the user in the allUsers array if it exists
+					set((state) => ({
+						allUsers:
+							state.allUsers?.map((user: User) =>
+								user._id === userId ? { ...user, role } : user,
+							) || [],
+					}));
+
+					return response.data;
+				} catch (error: any) {
+					set({
+						error:
+							error.response?.data?.message || "Failed to update user role",
+						isLoading: false,
+					});
+					throw error;
+				}
+			},
+
+			deleteUser: async (userId: string) => {
+				set({ isLoading: true, error: null });
+				try {
+					const response = await api.delete(`/users/${userId}`);
+					set({ isLoading: false });
+
+					// Remove the user from the allUsers array
+					set((state) => ({
+						allUsers:
+							state.allUsers?.filter((user: User) => user._id !== userId) || [],
+					}));
+
+					return response.data;
+				} catch (error: any) {
+					set({
+						error: error.response?.data?.message || "Failed to delete user",
+						isLoading: false,
+					});
+					throw error;
+				}
+			},
+
 			// Category actions (admin only)
 			createCategory: async (name, description) => {
 				set({ isLoading: true, error: null });
@@ -884,6 +1002,23 @@ export const useRevivalStore = create<RevivalState>()(
 				} catch (error: any) {
 					set({
 						error: error.response?.data?.message || "Failed to create category",
+						isLoading: false,
+					});
+					throw error;
+				}
+			},
+			updateCategory: async (
+				id: string,
+				data: { name: string; description?: string },
+			) => {
+				set({ isLoading: true, error: null });
+				try {
+					const response = await api.put(`/categories/${id}`, data);
+					set({ isLoading: false });
+					return response.data;
+				} catch (error: any) {
+					set({
+						error: error.response?.data?.message || "Failed to update category",
 						isLoading: false,
 					});
 					throw error;
@@ -935,19 +1070,23 @@ export const useRevivalStore = create<RevivalState>()(
 
 			// Admin actions
 			getAnalytics: async () => {
+				// Don't use isLoading from state as it might be stale
+				// Instead, add a dedicated fetching flag
+				if ((get() as any)._fetchingAnalytics) return;
+
+				(get() as any)._fetchingAnalytics = true;
 				set({ isLoading: true, error: null });
+
 				try {
-					const response =
-						await api.get<ApiResponse<AnalyticsData>>("/analytics");
-					set({
-						analytics: response.data.data,
-						isLoading: false,
-					});
+					const response = await api.get("/analytics");
+					set({ analytics: response.data.data, isLoading: false });
 				} catch (error: any) {
 					set({
 						error: error.response?.data?.message || "Failed to fetch analytics",
 						isLoading: false,
 					});
+				} finally {
+					(get() as any)._fetchingAnalytics = false;
 				}
 			},
 

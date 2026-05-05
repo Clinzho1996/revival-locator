@@ -86,12 +86,17 @@ export function Header() {
 
 		try {
 			if (isLogin) {
-				await login(email, password);
+				const response = (await login(email, password)) as any;
 				toast.success("Welcome back! 🎉", {
 					description: `You've successfully logged in as ${email}`,
 				});
 				setIsLoginModalOpen(false);
 				resetForm();
+
+				// Check if the logged-in user is admin and redirect
+				if (response?.user?.role === "admin") {
+					router.push("/admin");
+				}
 			} else {
 				if (!name.trim()) {
 					toast.error("Name is required", {
@@ -107,12 +112,17 @@ export function Header() {
 					setIsSubmitting(false);
 					return;
 				}
-				await register(name, email, password);
+				const response = (await register(name, email, password)) as any;
 				toast.success("Account created! 🎉", {
 					description: `Welcome ${name}! You're now part of the Revival community.`,
 				});
 				setIsLoginModalOpen(false);
 				resetForm();
+
+				// Check if the registered user is admin (unlikely for new registrations, but just in case)
+				if (response?.user?.role === "admin") {
+					router.push("/admin");
+				}
 			}
 		} catch (error: any) {
 			toast.error(isLogin ? "Login failed" : "Registration failed", {
@@ -178,9 +188,13 @@ export function Header() {
 						<Image src="/images/logo.png" alt="Logo" width={100} height={100} />
 					</Link>
 
-					{/* Desktop Navigation */}
+					{/* Desktop Navigation - Hide admin links for non-admins */}
 					<nav className="hidden md:flex items-center space-x-8 text-sm font-medium">
 						{navLinks.map((link) => {
+							// Hide bookmarks from nav if not authenticated
+							if (link.href === "/bookmarks" && !isAuthenticated) {
+								return null;
+							}
 							const isActive = pathname === link.href;
 							return (
 								<Link
@@ -198,6 +212,21 @@ export function Header() {
 								</Link>
 							);
 						})}
+						{/* Admin link - only show for admins */}
+						{isAuthenticated && user?.role === "admin" && (
+							<Link
+								href="/admin"
+								className={`relative py-1 transition-colors hover:text-primary ${
+									pathname === "/admin"
+										? "text-primary font-semibold"
+										: "text-muted-foreground"
+								}`}>
+								Admin
+								{pathname === "/admin" && (
+									<span className="absolute inset-x-0 -bottom-1 h-0.5 bg-primary rounded-full animate-in fade-in slide-in-from-bottom-1 duration-300" />
+								)}
+							</Link>
+						)}
 					</nav>
 
 					{/* User Menu / Auth Button */}
@@ -263,10 +292,12 @@ export function Header() {
 										<span>My Events</span>
 									</DropdownMenuItem>
 									{user.role === "admin" && (
-										<DropdownMenuItem onClick={() => router.push("/admin")}>
-											<Settings className="mr-2 h-4 w-4" />
-											<span>Admin Dashboard</span>
-										</DropdownMenuItem>
+										<>
+											<DropdownMenuItem onClick={() => router.push("/admin")}>
+												<Settings className="mr-2 h-4 w-4" />
+												<span>Admin Dashboard</span>
+											</DropdownMenuItem>
+										</>
 									)}
 									<DropdownMenuSeparator />
 									<DropdownMenuItem
@@ -301,6 +332,10 @@ export function Header() {
 						className="absolute top-full left-0 right-0 bg-background/95 backdrop-blur-md border-b border-white/5 md:hidden animate-in slide-in-from-top-2 duration-200">
 						<nav className="flex flex-col p-4 space-y-3">
 							{navLinks.map((link) => {
+								// Hide bookmarks from mobile nav if not authenticated
+								if (link.href === "/bookmarks" && !isAuthenticated) {
+									return null;
+								}
 								const isActive = pathname === link.href;
 								return (
 									<Link
@@ -316,6 +351,19 @@ export function Header() {
 									</Link>
 								);
 							})}
+							{/* Admin link in mobile menu */}
+							{isAuthenticated && user?.role === "admin" && (
+								<Link
+									href="/admin"
+									onClick={() => setIsMobileMenuOpen(false)}
+									className={`px-4 py-2 rounded-lg transition-colors ${
+										pathname === "/admin"
+											? "bg-primary/10 text-primary font-semibold"
+											: "text-muted-foreground hover:bg-primary/5 hover:text-primary"
+									}`}>
+									Admin Dashboard
+								</Link>
+							)}
 							{isAuthenticated && user && (
 								<>
 									<div className="border-t border-white/10 my-2" />
@@ -442,16 +490,6 @@ export function Header() {
 							{isLogin ? "Sign Up" : "Sign In"}
 						</button>
 					</div>
-
-					{/* Demo credentials hint (remove in production) */}
-					{isLogin && (
-						<div className="mt-2 p-3 bg-primary/5 rounded-xl text-xs text-center text-muted-foreground">
-							<p>Demo credentials:</p>
-							<p className="font-mono">
-								Email: confidinho@yahoo.com | Password: 12345678
-							</p>
-						</div>
-					)}
 				</DialogContent>
 			</Dialog>
 		</>

@@ -43,6 +43,7 @@ export default function ProfilePage() {
 		getDashboard,
 		dashboardData,
 		isLoading,
+		changePassword, // Add this
 	} = useRevival();
 
 	const [isEditing, setIsEditing] = useState(false);
@@ -50,6 +51,7 @@ export default function ProfilePage() {
 	const [showPasswordForm, setShowPasswordForm] = useState(false);
 	const [showCurrentPassword, setShowCurrentPassword] = useState(false);
 	const [showNewPassword, setShowNewPassword] = useState(false);
+	const [isSubmittingPassword, setIsSubmittingPassword] = useState(false); // Add this
 
 	const [formData, setFormData] = useState({
 		name: "",
@@ -77,7 +79,7 @@ export default function ProfilePage() {
 
 		getProfile();
 		getDashboard();
-	}, [isAuthenticated, router]);
+	}, [isAuthenticated, router, getProfile, getDashboard]);
 
 	useEffect(() => {
 		if (user) {
@@ -111,36 +113,104 @@ export default function ProfilePage() {
 		}
 	};
 
+	// Password strength checker
+	const getPasswordStrength = (password: string) => {
+		let strength = 0;
+		if (password.length >= 8) strength++;
+		if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength++;
+		if (password.match(/\d/)) strength++;
+		if (password.match(/[^a-zA-Z\d]/)) strength++;
+
+		if (strength === 0) return { text: "Very Weak", color: "text-red-500" };
+		if (strength === 1) return { text: "Weak", color: "text-orange-500" };
+		if (strength === 2) return { text: "Fair", color: "text-yellow-500" };
+		if (strength === 3) return { text: "Good", color: "text-blue-500" };
+		return { text: "Strong", color: "text-green-500" };
+	};
+
 	const handleChangePassword = async (e: React.FormEvent) => {
 		e.preventDefault();
 
+		// Validate current password
 		if (!passwordData.currentPassword) {
-			toast.error("Current password is required");
+			toast.error("Current password is required", {
+				description: "Please enter your current password to continue.",
+			});
 			return;
 		}
 
+		// Validate new password length
 		if (passwordData.newPassword.length < 6) {
-			toast.error("New password must be at least 6 characters");
+			toast.error("Password too short", {
+				description: "New password must be at least 6 characters long.",
+			});
 			return;
 		}
 
+		// Check if new passwords match
 		if (passwordData.newPassword !== passwordData.confirmPassword) {
-			toast.error("New passwords do not match");
+			toast.error("Passwords do not match", {
+				description: "Your new password and confirmation password must match.",
+			});
 			return;
 		}
 
-		// Note: You'll need to add a changePassword function to your store
-		// For now, this is a placeholder
-		toast.info("Password change feature coming soon", {
-			description: "This feature will be available in the next update",
-		});
+		// Check if new password is different from current
+		if (passwordData.newPassword === passwordData.currentPassword) {
+			toast.error("Same password", {
+				description:
+					"Please choose a different password than your current one.",
+			});
+			return;
+		}
 
-		setShowPasswordForm(false);
-		setPasswordData({
-			currentPassword: "",
-			newPassword: "",
-			confirmPassword: "",
-		});
+		setIsSubmittingPassword(true);
+
+		try {
+			// Call the changePassword API from your store
+			await changePassword(
+				passwordData.currentPassword,
+				passwordData.newPassword,
+			);
+
+			// Show success message
+			toast.success("Password changed successfully! 🔒", {
+				description:
+					"Your password has been updated. Please use your new password next time you log in.",
+				duration: 5000,
+			});
+
+			// Reset form and close
+			setShowPasswordForm(false);
+			setPasswordData({
+				currentPassword: "",
+				newPassword: "",
+				confirmPassword: "",
+			});
+		} catch (error: any) {
+			// Handle specific error cases
+			const errorMessage = error.message || "Failed to change password";
+
+			if (errorMessage.toLowerCase().includes("current password")) {
+				toast.error("Incorrect current password", {
+					description:
+						"The current password you entered is incorrect. Please try again.",
+				});
+			} else if (errorMessage.toLowerCase().includes("same")) {
+				toast.error("Password already in use", {
+					description:
+						"Please choose a different password than your current one.",
+				});
+			} else {
+				toast.error("Failed to change password", {
+					description:
+						errorMessage ||
+						"Please try again later. If the problem persists, contact support.",
+				});
+			}
+		} finally {
+			setIsSubmittingPassword(false);
+		}
 	};
 
 	const getInitials = (name: string) => {
@@ -466,6 +536,7 @@ export default function ProfilePage() {
 													}
 													className="rounded-xl pr-10"
 													required
+													disabled={isSubmittingPassword}
 												/>
 												<button
 													type="button"
@@ -496,6 +567,7 @@ export default function ProfilePage() {
 													}
 													className="rounded-xl pr-10"
 													required
+													disabled={isSubmittingPassword}
 												/>
 												<button
 													type="button"
@@ -508,8 +580,16 @@ export default function ProfilePage() {
 													)}
 												</button>
 											</div>
+											{passwordData.newPassword && (
+												<p
+													className={`text-xs mt-1 ${getPasswordStrength(passwordData.newPassword).color}`}>
+													Password strength:{" "}
+													{getPasswordStrength(passwordData.newPassword).text}
+												</p>
+											)}
 											<p className="text-xs text-muted-foreground">
-												Password must be at least 6 characters
+												Password must be at least 6 characters and should
+												include a mix of letters, numbers, and symbols.
 											</p>
 										</div>
 										<div className="space-y-2">
@@ -528,10 +608,34 @@ export default function ProfilePage() {
 												}
 												className="rounded-xl"
 												required
+												disabled={isSubmittingPassword}
 											/>
+											{passwordData.confirmPassword &&
+												passwordData.newPassword !==
+													passwordData.confirmPassword && (
+													<p className="text-xs text-red-500 mt-1">
+														Passwords do not match
+													</p>
+												)}
 										</div>
 										<div className="flex gap-3">
-											<Button type="submit">Update Password</Button>
+											<Button
+												type="submit"
+												disabled={
+													isSubmittingPassword ||
+													!passwordData.newPassword ||
+													passwordData.newPassword !==
+														passwordData.confirmPassword
+												}>
+												{isSubmittingPassword ? (
+													<>
+														<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+														Updating Password...
+													</>
+												) : (
+													"Update Password"
+												)}
+											</Button>
 											<Button
 												type="button"
 												variant="outline"
@@ -542,7 +646,8 @@ export default function ProfilePage() {
 														newPassword: "",
 														confirmPassword: "",
 													});
-												}}>
+												}}
+												disabled={isSubmittingPassword}>
 												Cancel
 											</Button>
 										</div>

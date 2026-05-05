@@ -206,7 +206,7 @@ export function EventList({ initialEvents = [] }: EventListProps) {
 			{/* Modern Filter Tabs */}
 			<div className="flex flex-col md:flex-row justify-between items-center gap-8 sticky top-24 z-40 bg-white/80 backdrop-blur-xl py-4 -mx-4 px-4 rounded-3xl border border-slate-100 shadow-sm">
 				<div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full md:w-auto pb-2 md:pb-0">
-					{categoryList.map((cat) => (
+					{categoryList.map((cat: any) => (
 						<button
 							key={cat}
 							onClick={() => setActiveCategory(cat)}
