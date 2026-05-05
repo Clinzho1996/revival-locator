@@ -8,7 +8,7 @@ import { Event } from "@/store/useRevivalStore";
 import { differenceInDays, format, parseISO } from "date-fns";
 import { ArrowRight, Calendar, Loader2, MapPin, Search } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EventCard } from "./EventCard";
 
 interface EventListProps {
@@ -18,7 +18,7 @@ interface EventListProps {
 export function EventList({ initialEvents = [] }: EventListProps) {
 	const {
 		events: apiEvents,
-		isLoading,
+		isLoading: storeLoading,
 		error,
 		getEvents,
 		searchEvents,
@@ -32,28 +32,34 @@ export function EventList({ initialEvents = [] }: EventListProps) {
 		"closest",
 	);
 
-	// Fetch events and categories on mount
+	const hasInitialized = useRef(false);
+	const isUsingInitialEvents = initialEvents.length > 0;
+
+	// Get events data - prioritize initialEvents from parent
+	const eventsData = isUsingInitialEvents ? initialEvents : apiEvents;
+	const isLoading = storeLoading && !isUsingInitialEvents;
+
+	// Only fetch categories (always needed), but skip events if we have initialEvents
 	useEffect(() => {
-		if (initialEvents.length === 0) {
-			getEvents();
-		}
 		getCategories();
+
+		// Only fetch events if we don't have initialEvents
+		if (!hasInitialized.current && !isUsingInitialEvents) {
+			getEvents();
+			hasInitialized.current = true;
+		}
 	}, []);
 
-	// Handle search
-	useEffect(() => {
-		const delayDebounce = setTimeout(() => {
-			if (searchQuery) {
-				searchEvents(searchQuery);
-			} else if (initialEvents.length === 0) {
-				getEvents();
-			}
-		}, 300);
-		return () => clearTimeout(delayDebounce);
-	}, [searchQuery]);
-
-	// Get events data (use API data or initial data from SSR)
-	const eventsData = initialEvents.length > 0 ? initialEvents : apiEvents;
+	// Handle local search - only trigger if we're not using initialEvents
+	const handleLocalSearch = (query: string) => {
+		setSearchQuery(query);
+		if (!isUsingInitialEvents && query) {
+			const debounce = setTimeout(() => {
+				searchEvents(query);
+			}, 300);
+			return () => clearTimeout(debounce);
+		}
+	};
 
 	// Create a map of category IDs to names for easy lookup
 	const categoryMap = useMemo(() => {
@@ -74,14 +80,14 @@ export function EventList({ initialEvents = [] }: EventListProps) {
 				? typeof event.category === "object"
 					? event.category.name
 					: categoryMap.get(event.category) || "Uncategorized"
-				: "Uncategorized", // Show "Uncategorized" for null categories
+				: "Uncategorized",
 		}));
 	}, [eventsData, categoryMap]);
 
 	// Filtering logic
 	const filteredEvents = enhancedEvents.filter((event) => {
 		const matchesSearch =
-			!searchQuery || // If no search query, include all
+			!searchQuery ||
 			event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			event.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			event.location?.address
@@ -126,15 +132,6 @@ export function EventList({ initialEvents = [] }: EventListProps) {
 	const featuredEvent = sortedEvents.length > 0 ? sortedEvents[0] : null;
 	const otherEvents = featuredEvent ? sortedEvents.slice(1) : [];
 
-	// Debug logging
-	useEffect(() => {
-		console.log("Events Data:", eventsData);
-		console.log("Enhanced Events:", enhancedEvents);
-		console.log("Sorted Events:", sortedEvents);
-		console.log("Featured Event:", featuredEvent);
-		console.log("Other Events:", otherEvents);
-	}, [eventsData, enhancedEvents, sortedEvents, featuredEvent]);
-
 	if (isLoading && eventsData.length === 0) {
 		return (
 			<div className="flex flex-col items-center justify-center py-32 bg-slate-50 rounded-[3rem]">
@@ -144,7 +141,7 @@ export function EventList({ initialEvents = [] }: EventListProps) {
 		);
 	}
 
-	if (error && eventsData.length === 0) {
+	if (error && eventsData.length === 0 && !isUsingInitialEvents) {
 		return (
 			<div className="text-center py-32 bg-slate-50 rounded-[3rem] border-2 border-dashed border-red-200">
 				<div className="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
@@ -194,14 +191,14 @@ export function EventList({ initialEvents = [] }: EventListProps) {
 
 	return (
 		<div className="space-y-12" id="event-list">
-			{/* Search Bar */}
+			{/* Search Bar - Only show if we're not in search results mode or always show for filtering */}
 			<div className="relative max-w-2xl mx-auto">
 				<Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
 				<Input
 					type="text"
 					placeholder="Search events by title, location, or description..."
 					value={searchQuery}
-					onChange={(e) => setSearchQuery(e.target.value)}
+					onChange={(e) => handleLocalSearch(e.target.value)}
 					className="pl-12 py-6 rounded-2xl border-slate-200 focus:border-primary focus:ring-primary text-base"
 				/>
 			</div>
@@ -292,6 +289,7 @@ function FeaturedEventCard({
 			<img
 				src={
 					event.banner ||
+					event.image ||
 					"https://images.unsplash.com/photo-1438032945730-e6e5b1a5b6d3?w=1200"
 				}
 				alt={event.title}

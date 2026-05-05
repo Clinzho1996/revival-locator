@@ -140,10 +140,10 @@ export function Hero() {
 										type="text"
 										value={keyword}
 										onChange={(e) => setKeyword(e.target.value)}
-										onKeyPress={handleKeyPress}
+										onKeyDown={handleKeyPress}
 										placeholder="Event, church, or keyword..."
-										className="h-12 bg-transparent border-none text-white placeholder:text-white/30 text-lg focus-visible:ring-0 px-0 w-full"
 										disabled={isSearching}
+										className="h-12 bg-transparent border-0 text-white placeholder:text-white/30 text-lg px-0 w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none focus:ring-0"
 									/>
 								</div>
 
@@ -155,7 +155,7 @@ export function Hero() {
 										onChange={(e) => setCity(e.target.value)}
 										onKeyPress={handleKeyPress}
 										placeholder="City or zip code..."
-										className="h-12 bg-transparent border-none text-white placeholder:text-white/30 text-lg focus-visible:ring-0 px-0 w-full"
+										className="h-12 bg-transparent border-0 text-white placeholder:text-white/30 text-lg px-0 w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none focus:ring-0"
 										disabled={isSearching}
 									/>
 								</div>
