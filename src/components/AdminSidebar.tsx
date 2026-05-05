@@ -75,7 +75,7 @@ export function AdminSidebar() {
 				</SidebarGroup>
 
 				<SidebarGroup>
-					<SidebarGroupLabel>Actions</SidebarGroupLabel>
+					<SidebarGroupLabel>Action</SidebarGroupLabel>
 					<SidebarGroupContent>
 						<SidebarMenu>
 							<SidebarMenuItem>
