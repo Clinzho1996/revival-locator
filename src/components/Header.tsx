@@ -128,7 +128,15 @@ export function Header() {
 		setEmail("");
 		setPassword("");
 		setName("");
-		setIsLogin(true);
+		// Don't reset isLogin here - keep it as is
+	};
+
+	const switchMode = () => {
+		setIsLogin(!isLogin);
+		// Clear form when switching modes
+		setEmail("");
+		setPassword("");
+		setName("");
 	};
 
 	const handleLogout = async () => {
@@ -271,7 +279,13 @@ export function Header() {
 							</DropdownMenu>
 						) : (
 							<Button
-								onClick={() => setIsLoginModalOpen(true)}
+								onClick={() => {
+									setIsLoginModalOpen(true);
+									setIsLogin(true); // Reset to login mode when opening modal
+									setEmail("");
+									setPassword("");
+									setName("");
+								}}
 								className="bg-primary hover:bg-primary/90 text-white">
 								<User className="h-4 w-4 mr-2" />
 								Sign In
@@ -320,6 +334,10 @@ export function Header() {
 									onClick={() => {
 										setIsMobileMenuOpen(false);
 										setIsLoginModalOpen(true);
+										setIsLogin(true);
+										setEmail("");
+										setPassword("");
+										setName("");
 									}}
 									className="px-4 py-2 rounded-lg bg-primary text-white font-semibold">
 									Sign In
@@ -356,6 +374,7 @@ export function Header() {
 									onChange={(e) => setName(e.target.value)}
 									disabled={isSubmitting}
 									className="rounded-xl"
+									autoFocus={!isLogin}
 								/>
 							</div>
 						)}
@@ -371,6 +390,7 @@ export function Header() {
 								required
 								disabled={isSubmitting}
 								className="rounded-xl"
+								autoFocus={isLogin}
 							/>
 						</div>
 
@@ -417,10 +437,7 @@ export function Header() {
 						</span>
 						<button
 							type="button"
-							onClick={() => {
-								setIsLogin(!isLogin);
-								resetForm();
-							}}
+							onClick={switchMode}
 							className="text-primary hover:underline font-semibold">
 							{isLogin ? "Sign Up" : "Sign In"}
 						</button>
