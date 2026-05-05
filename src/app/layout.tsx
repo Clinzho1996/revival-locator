@@ -1,6 +1,6 @@
 import { Poppins } from "next/font/google";
-// @ts-ignore: side-effect CSS import declaration not found
 import { Toaster } from "sonner";
+// @ts-ignore: side-effect CSS import declaration not found
 import "./globals.css";
 
 const poppins = Poppins({
