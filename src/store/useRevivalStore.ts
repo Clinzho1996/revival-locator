@@ -1,5 +1,6 @@
 // store/useRevivalStore.ts
 import axios, { AxiosInstance } from "axios";
+import { toast } from "sonner";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -26,7 +27,7 @@ export interface Event {
 	_id: string;
 	title: string;
 	description: string;
-	category: string | Category ;
+	category: string | Category;
 	location: Location;
 	date: string;
 	time?: string;
@@ -135,6 +136,24 @@ interface BookmarkResponse {
 	total: number;
 }
 
+export interface Blog {
+	_id: string;
+	title: string;
+	slug: string;
+	content: string;
+	excerpt: string;
+	featuredImage: string;
+	category: string;
+	tags: string[];
+	author: string | User;
+	readTime: number;
+	views: number;
+	likes: number;
+	status: string;
+	publishedAt: string;
+	createdAt: string;
+	updatedAt: string;
+}
 // State types
 interface RevivalState {
 	// Auth state
@@ -173,6 +192,18 @@ interface RevivalState {
 	};
 
 	// Actions
+	blogs: Blog[];
+	selectedBlog: Blog | null;
+	getBlogs: (params?: {
+		page?: number;
+		category?: string;
+		search?: string;
+	}) => Promise<void>;
+	getBlogBySlug: (slug: string) => Promise<void>;
+	createBlog: (blogData: Partial<Blog>) => Promise<void>;
+	updateBlog: (id: string, blogData: Partial<Blog>) => Promise<void>;
+	deleteBlog: (id: string) => Promise<void>;
+	likeBlog: (id: string) => Promise<void>;
 	setLoading: (loading: boolean) => void;
 	setError: (error: string | null) => void;
 
@@ -282,6 +313,8 @@ export const useRevivalStore = create<RevivalState>()(
 	persist(
 		(set, get) => ({
 			// Initial state
+			blogs: [],
+			selectedBlog: null,
 			allUsers: [],
 			user: null,
 			token: null,
@@ -1067,7 +1100,134 @@ export const useRevivalStore = create<RevivalState>()(
 					throw error;
 				}
 			},
+			getBlogs: async (params) => {
+				set({ isLoading: true, error: null });
+				try {
+					const response = await api.get("/blogs", { params });
+					set({
+						blogs: response.data.data.blogs,
+						pagination: {
+							page: response.data.data.page,
+							limit: 10,
+							total: response.data.data.total,
+						},
+						isLoading: false,
+					});
+				} catch (error: any) {
+					set({
+						error: error.response?.data?.message || "Failed to fetch blogs",
+						isLoading: false,
+					});
+				}
+			},
 
+			getBlogBySlug: async (slug) => {
+				set({ isLoading: true, error: null });
+				try {
+					const response = await api.get(`/blogs/${slug}`);
+					set({
+						selectedBlog: response.data.data,
+						isLoading: false,
+					});
+				} catch (error: any) {
+					set({
+						error: error.response?.data?.message || "Failed to fetch blog",
+						isLoading: false,
+					});
+				}
+			},
+
+			likeBlog: async (id) => {
+				set({ isLoading: true, error: null });
+				try {
+					const response = await api.post(`/blogs/${id}/like`);
+					set((state) => ({
+						blogs: state.blogs.map((blog) =>
+							blog._id === id ? { ...blog, likes: blog.likes + 1 } : blog,
+						),
+						selectedBlog:
+							state.selectedBlog?._id === id
+								? {
+										...state.selectedBlog,
+										likes: (state.selectedBlog.likes || 0) + 1,
+									}
+								: state.selectedBlog,
+						isLoading: false,
+					}));
+				} catch (error: any) {
+					set({
+						error: error.response?.data?.message || "Failed to like blog",
+						isLoading: false,
+					});
+				}
+			},
+			createBlog: async (blogData) => {
+				set({ isLoading: true, error: null });
+				try {
+					const response = await api.post<ApiResponse<Blog>>(
+						"/blogs",
+						blogData,
+					);
+					set((state) => ({
+						blogs: [response.data.data, ...state.blogs],
+						isLoading: false,
+					}));
+					toast.success("Blog created successfully!");
+				} catch (error: any) {
+					set({
+						error: error.response?.data?.message || "Failed to create blog",
+						isLoading: false,
+					});
+					throw error;
+				}
+			},
+
+			updateBlog: async (id, blogData) => {
+				set({ isLoading: true, error: null });
+				try {
+					const response = await api.put<ApiResponse<Blog>>(
+						`/blogs/${id}`,
+						blogData,
+					);
+					set((state) => ({
+						blogs: state.blogs.map((blog) =>
+							blog._id === id ? response.data.data : blog,
+						),
+						selectedBlog:
+							state.selectedBlog?._id === id
+								? response.data.data
+								: state.selectedBlog,
+						isLoading: false,
+					}));
+					toast.success("Blog updated successfully!");
+				} catch (error: any) {
+					set({
+						error: error.response?.data?.message || "Failed to update blog",
+						isLoading: false,
+					});
+					throw error;
+				}
+			},
+
+			deleteBlog: async (id) => {
+				set({ isLoading: true, error: null });
+				try {
+					await api.delete(`/blogs/${id}`);
+					set((state) => ({
+						blogs: state.blogs.filter((blog) => blog._id !== id),
+						selectedBlog:
+							state.selectedBlog?._id === id ? null : state.selectedBlog,
+						isLoading: false,
+					}));
+					toast.success("Blog deleted successfully!");
+				} catch (error: any) {
+					set({
+						error: error.response?.data?.message || "Failed to delete blog",
+						isLoading: false,
+					});
+					throw error;
+				}
+			},
 			// Admin actions
 			getAnalytics: async () => {
 				// Don't use isLoading from state as it might be stale

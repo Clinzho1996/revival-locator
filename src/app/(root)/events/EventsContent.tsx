@@ -2,18 +2,21 @@
 "use client";
 
 import { EventList } from "@/components/EventList";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useRevival } from "@/hooks/useRevival";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 export function EventsContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const { searchEvents, events, isLoading, getEvents } = useRevival();
-	const hasInitialized = useRef(false);
+	const [isSearching, setIsSearching] = useState(false);
 	const [localKeyword, setLocalKeyword] = useState("");
 	const [localCity, setLocalCity] = useState("");
+	const [hasLoaded, setHasLoaded] = useState(false);
 
 	const keyword = searchParams.get("keyword");
 	const city = searchParams.get("city");
@@ -26,19 +29,20 @@ export function EventsContent() {
 
 	// Handle search based on URL params
 	useEffect(() => {
-		// Only run once on initial load or when params change
-		if (!hasInitialized.current) {
-			hasInitialized.current = true;
-
+		const performSearch = async () => {
 			if (keyword || city) {
-				// If there are search params, perform search
-				searchEvents(keyword || "", city || undefined);
-			} else {
+				setIsSearching(true);
+				await searchEvents(keyword || "", city || undefined);
+				setIsSearching(false);
+			} else if (!hasLoaded) {
 				// If no search params, fetch all events
-				getEvents();
+				await getEvents();
+				setHasLoaded(true);
 			}
-		}
-	}, [keyword, city, searchEvents, getEvents]);
+		};
+
+		performSearch();
+	}, [keyword, city]); // Remove searchEvents and getEvents from deps to prevent loops
 
 	const handleLocalSearch = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -60,9 +64,9 @@ export function EventsContent() {
 
 	const hasSearchParams = keyword || city;
 	const resultCount = events.length;
+	const showLoading = (isLoading || isSearching) && events.length === 0;
 
-	// Don't show loading for initial load when there are events
-	if (isLoading && events.length === 0 && hasInitialized.current) {
+	if (showLoading) {
 		return (
 			<div className="min-h-screen flex items-center justify-center">
 				<div className="text-center">
@@ -78,6 +82,40 @@ export function EventsContent() {
 	return (
 		<div className="min-h-screen bg-background">
 			<div className="container mx-auto px-4 py-8">
+				{/* Search Form */}
+				<form onSubmit={handleLocalSearch} className="mb-8">
+					<div className="flex flex-col md:flex-row gap-4">
+						<div className="flex-1 relative">
+							<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+							<Input
+								placeholder="Search by event name or keyword..."
+								value={localKeyword}
+								onChange={(e) => setLocalKeyword(e.target.value)}
+								className="pl-10 rounded-xl"
+							/>
+						</div>
+						<div className="flex-1 relative">
+							<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+							<Input
+								placeholder="Search by city..."
+								value={localCity}
+								onChange={(e) => setLocalCity(e.target.value)}
+								className="pl-10 rounded-xl"
+							/>
+						</div>
+						<Button type="submit" className="bg-primary hover:bg-primary/90">
+							<Search className="w-4 h-4 mr-2" />
+							Search
+						</Button>
+						{(hasSearchParams || localKeyword || localCity) && (
+							<Button type="button" variant="outline" onClick={clearSearch}>
+								<X className="w-4 h-4 mr-2" />
+								Clear
+							</Button>
+						)}
+					</div>
+				</form>
+
 				<div className="mb-8">
 					<h1 className="text-3xl font-bold">
 						{hasSearchParams
@@ -97,16 +135,11 @@ export function EventsContent() {
 								No events match your search criteria. Try different keywords or
 								check back later for new events.
 							</p>
-							<button
-								onClick={clearSearch}
-								className="mt-4 text-primary font-bold hover:underline">
-								Clear search
-							</button>
 						</div>
 					)}
 				</div>
 
-				{/* Show EventList */}
+				{/* Show EventList with search results */}
 				{(resultCount > 0 || (!hasSearchParams && !isLoading)) && (
 					<EventList initialEvents={events} />
 				)}

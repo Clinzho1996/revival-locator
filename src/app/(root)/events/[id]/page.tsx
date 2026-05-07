@@ -5,8 +5,19 @@ import { ReviewSystem } from "@/components/ReviewSystem";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRevival } from "@/hooks/useRevival";
+import axios from "axios";
 import { format, parseISO } from "date-fns";
 import {
 	Calendar,
@@ -45,10 +56,18 @@ export default function EventDetailsPage({
 		sendMessage,
 		getEventMessages,
 		messages,
+		getEvents,
 	} = useRevival();
 
 	const [isInterested, setIsInterested] = useState(false);
 	const [isSharing, setIsSharing] = useState(false);
+	const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+	const [isRegistering, setIsRegistering] = useState(false);
+	const [registrationData, setRegistrationData] = useState({
+		name: "",
+		email: "",
+		phone: "",
+	});
 
 	// Fetch event data on mount
 	useEffect(() => {
@@ -65,6 +84,141 @@ export default function EventDetailsPage({
 			setIsInterested(isBookmarked(selectedEvent._id));
 		}
 	}, [selectedEvent, isAuthenticated, isBookmarked]);
+
+	// Pre-fill registration form with user data if authenticated
+	useEffect(() => {
+		if (isAuthenticated && user) {
+			setRegistrationData({
+				name: user.name || "",
+				email: user.email || "",
+				phone: "",
+			});
+		}
+	}, [isAuthenticated, user]);
+
+	const handleRegister = async (e: React.FormEvent) => {
+		e.preventDefault();
+
+		if (!registrationData.name.trim()) {
+			toast.error("Name is required");
+			return;
+		}
+		if (!registrationData.email.trim()) {
+			toast.error("Email is required");
+			return;
+		}
+
+		setIsRegistering(true);
+		try {
+			const response = await axios.post(
+				`https://revival-locator-backend.onrender.com/api/events/${selectedEvent?._id}/register`,
+				{
+					name: registrationData.name,
+					email: registrationData.email,
+					phone: registrationData.phone,
+				},
+				{
+					headers: {
+						Authorization: `Bearer ${localStorage.getItem("token")}`,
+					},
+				},
+			);
+
+			if (response.data.success) {
+				toast.success("Registration successful! 🎉", {
+					description:
+						"You have been registered for this event. A confirmation email has been sent.",
+					duration: 5000,
+				});
+
+				// Update the event attendees count
+				await getEventById(id);
+				await getEvents(); // Refresh events list
+
+				// Also mark as interested/bookmark if not already
+				if (!isInterested && isAuthenticated) {
+					await toggleBookmark(selectedEvent!._id);
+					setIsInterested(true);
+				}
+
+				setIsRegisterModalOpen(false);
+				setRegistrationData({
+					name: user?.name || "",
+					email: user?.email || "",
+					phone: "",
+				});
+			}
+		} catch (error: any) {
+			const errorMessage =
+				error.response?.data?.message || "Failed to register for event";
+			toast.error("Registration failed", {
+				description: errorMessage,
+			});
+		} finally {
+			setIsRegistering(false);
+		}
+	};
+
+	const handleInterest = async () => {
+		if (!isAuthenticated) {
+			toast.error("Authentication required", {
+				description: "Please login to express interest in this event",
+				action: {
+					label: "Login",
+					onClick: () => router.push("/login"),
+				},
+			});
+			return;
+		}
+
+		try {
+			await toggleBookmark(selectedEvent!._id);
+			const newState = !isInterested;
+			setIsInterested(newState);
+
+			toast.success(newState ? "Interest registered! 🎉" : "Interest removed", {
+				description: newState
+					? `You've expressed interest in ${selectedEvent?.title}. We'll notify you about updates.`
+					: `You've removed your interest from ${selectedEvent?.title}.`,
+				action: newState
+					? {
+							label: "Complete Registration",
+							onClick: () => setIsRegisterModalOpen(true),
+						}
+					: undefined,
+			});
+		} catch (error) {
+			toast.error("Failed to register interest", {
+				description: "Please try again later",
+			});
+		}
+	};
+
+	const handleShare = async () => {
+		setIsSharing(true);
+		try {
+			if (navigator.share) {
+				await navigator.share({
+					title: selectedEvent?.title,
+					text: selectedEvent?.description,
+					url: window.location.href,
+				});
+			} else {
+				await navigator.clipboard.writeText(window.location.href);
+				toast.success("Link copied!", {
+					description: "Share this event with your friends and family.",
+				});
+			}
+		} catch (error) {
+			if (error instanceof Error && error.name !== "AbortError") {
+				toast.error("Failed to share", {
+					description: "Please try again or copy the link manually.",
+				});
+			}
+		} finally {
+			setIsSharing(false);
+		}
+	};
 
 	if (isLoading && !selectedEvent) {
 		return (
@@ -96,67 +250,6 @@ export default function EventDetailsPage({
 			</div>
 		);
 	}
-
-	const handleInterest = async () => {
-		if (!isAuthenticated) {
-			toast.error("Authentication required", {
-				description: "Please login to express interest in this event",
-				action: {
-					label: "Login",
-					onClick: () => router.push("/login"),
-				},
-			});
-			return;
-		}
-
-		try {
-			await toggleBookmark(selectedEvent._id);
-			const newState = !isInterested;
-			setIsInterested(newState);
-
-			toast.success(newState ? "Interest registered! 🎉" : "Interest removed", {
-				description: newState
-					? `You've expressed interest in ${selectedEvent.title}. We'll notify you about updates.`
-					: `You've removed your interest from ${selectedEvent.title}.`,
-				action: newState
-					? {
-							label: "Add to Calendar",
-							onClick: () => toast.info("Calendar integration coming soon!"),
-						}
-					: undefined,
-			});
-		} catch (error) {
-			toast.error("Failed to register interest", {
-				description: "Please try again later",
-			});
-		}
-	};
-
-	const handleShare = async () => {
-		setIsSharing(true);
-		try {
-			if (navigator.share) {
-				await navigator.share({
-					title: selectedEvent.title,
-					text: selectedEvent.description,
-					url: window.location.href,
-				});
-			} else {
-				await navigator.clipboard.writeText(window.location.href);
-				toast.success("Link copied!", {
-					description: "Share this event with your friends and family.",
-				});
-			}
-		} catch (error) {
-			if (error instanceof Error && error.name !== "AbortError") {
-				toast.error("Failed to share", {
-					description: "Please try again or copy the link manually.",
-				});
-			}
-		} finally {
-			setIsSharing(false);
-		}
-	};
 
 	const eventDate = parseISO(selectedEvent.date);
 	const location =
@@ -238,7 +331,7 @@ export default function EventDetailsPage({
 								<Heart
 									className={`w-5 h-5 ${isInterested ? "fill-current" : ""}`}
 								/>
-								{isInterested ? "Interested" : "I'm Interested"}
+								{isInterested ? "Event Saved" : "Save Event"}
 							</Button>
 							<Button
 								variant="outline"
@@ -344,7 +437,7 @@ export default function EventDetailsPage({
 											</p>
 											<p className="font-bold">
 												{selectedEvent.attendees?.toLocaleString() || 0}{" "}
-												Worshippers
+												Registered
 											</p>
 										</div>
 									</div>
@@ -388,9 +481,9 @@ export default function EventDetailsPage({
 								</div>
 								<hr className="border-primary/5" />
 								<Button
-									variant="outline"
-									className="w-full h-12 rounded-xl group hover:border-primary">
-									Contact Organizer
+									onClick={() => setIsRegisterModalOpen(true)}
+									className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90">
+									Register for Event
 								</Button>
 							</CardContent>
 						</Card>
@@ -406,6 +499,112 @@ export default function EventDetailsPage({
 					</div>
 				</div>
 			</div>
+
+			{/* Registration Modal */}
+			<Dialog open={isRegisterModalOpen} onOpenChange={setIsRegisterModalOpen}>
+				<DialogContent className="sm:max-w-[500px] rounded-2xl">
+					<DialogHeader>
+						<DialogTitle className="text-2xl font-bold">
+							Register for {selectedEvent.title}
+						</DialogTitle>
+						<DialogDescription>
+							Please fill in your details to confirm your attendance.
+							{selectedEvent.isFree
+								? " This is a free event."
+								: ` Ticket price: $${selectedEvent.price}`}
+						</DialogDescription>
+					</DialogHeader>
+
+					<form onSubmit={handleRegister}>
+						<div className="space-y-4 py-4">
+							<div className="space-y-2">
+								<Label htmlFor="name">
+									Full Name <span className="text-red-500">*</span>
+								</Label>
+								<Input
+									id="name"
+									placeholder="Enter your full name"
+									value={registrationData.name}
+									onChange={(e) =>
+										setRegistrationData({
+											...registrationData,
+											name: e.target.value,
+										})
+									}
+									className="rounded-xl"
+									disabled={isRegistering}
+									required
+								/>
+							</div>
+
+							<div className="space-y-2">
+								<Label htmlFor="email">
+									Email Address <span className="text-red-500">*</span>
+								</Label>
+								<Input
+									id="email"
+									type="email"
+									placeholder="Enter your email"
+									value={registrationData.email}
+									onChange={(e) =>
+										setRegistrationData({
+											...registrationData,
+											email: e.target.value,
+										})
+									}
+									className="rounded-xl"
+									disabled={isRegistering}
+									required
+								/>
+								<p className="text-xs text-muted-foreground">
+									A confirmation email will be sent to this address.
+								</p>
+							</div>
+
+							<div className="space-y-2">
+								<Label htmlFor="phone">Phone Number (Optional)</Label>
+								<Input
+									id="phone"
+									type="tel"
+									placeholder="Enter your phone number"
+									value={registrationData.phone}
+									onChange={(e) =>
+										setRegistrationData({
+											...registrationData,
+											phone: e.target.value,
+										})
+									}
+									className="rounded-xl"
+									disabled={isRegistering}
+								/>
+							</div>
+						</div>
+
+						<DialogFooter>
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => setIsRegisterModalOpen(false)}
+								disabled={isRegistering}>
+								Cancel
+							</Button>
+							<Button
+								type="submit"
+								className="bg-primary hover:bg-primary/90"
+								disabled={isRegistering}>
+								{isRegistering ? (
+									<>
+										<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+										Registering...
+									</>
+								) : (
+									"Confirm Registration"
+								)}
+							</Button>
+						</DialogFooter>
+					</form>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

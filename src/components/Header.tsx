@@ -54,6 +54,7 @@ export function Header() {
 		{ href: "/", label: "Find Events" },
 		{ href: "/organizers", label: "Organizers" },
 		{ href: "/resources", label: "Resources" },
+		{ href: "/blog", label: "Blog" },
 		{ href: "/testimonies", label: "Testimonies" },
 		{ href: "/bookmarks", label: "Bookmarks" },
 	];
