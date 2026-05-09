@@ -42,7 +42,7 @@ export default function Home() {
 				for (const category of categories) {
 					try {
 						const response = await fetch(
-							`http://localhost:5000/api/events?category=${category._id}`,
+							`https://revival-locator-backend.onrender.com/api/events?category=${category._id}`,
 						);
 						const events = await response.json();
 						counts[category.name] =
