@@ -131,6 +131,7 @@ export function EventList({ initialEvents = [] }: EventListProps) {
 	// Find featured event (first event if available)
 	const featuredEvent = sortedEvents.length > 0 ? sortedEvents[0] : null;
 	const otherEvents = featuredEvent ? sortedEvents.slice(1) : [];
+	const mobileEvents = featuredEvent ? sortedEvents.slice(0) : [];
 
 	if (isLoading && eventsData.length === 0) {
 		return (
@@ -254,7 +255,15 @@ export function EventList({ initialEvents = [] }: EventListProps) {
 
 				{/* Show other events */}
 				{otherEvents.map((event) => (
-					<EventCard key={event._id} event={event} />
+					<div className="hidden md:block">
+						<EventCard key={event._id} event={event} />{" "}
+					</div>
+				))}
+
+				{mobileEvents.map((event) => (
+					<div className="md:hidden">
+						<EventCard key={event._id} event={event} />
+					</div>
 				))}
 			</div>
 		</div>
@@ -285,7 +294,7 @@ function FeaturedEventCard({
 			: "Uncategorized");
 
 	return (
-		<div className="group relative w-full h-[400px] md:h-[500px] overflow-hidden rounded-[2.5rem] border border-slate-100 shadow-2xl transition-all hover:shadow-primary/10">
+		<div className="group hidden md:block relative w-full h-[400px] md:h-[500px] overflow-hidden rounded-[2.5rem] border border-slate-100 shadow-2xl transition-all hover:shadow-primary/10">
 			<img
 				src={
 					event.banner ||
