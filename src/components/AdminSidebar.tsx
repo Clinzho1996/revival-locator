@@ -11,6 +11,7 @@ import {
 	LayoutDashboard,
 	LogOut,
 	Settings,
+	Star,
 	Tag,
 	Users,
 } from "lucide-react";
@@ -26,6 +27,8 @@ const menuItems = [
 	{ href: "/admin/users", label: "Users", icon: Users },
 	{ href: "/admin/categories", label: "Categories", icon: Tag },
 	{ href: "/admin/blogs", label: "Blogs", icon: FileTextIcon },
+	{ href: "/admin/testimonies", label: "Testimonies", icon: Star },
+
 	// { href: "/admin/reviews", label: "Reviews", icon: AlertCircle },
 	// { href: "/admin/messages", label: "Messages", icon: MessageSquare },
 	{ href: "/admin/resources", label: "Resources", icon: FileText },

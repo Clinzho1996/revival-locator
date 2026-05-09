@@ -225,9 +225,9 @@ export function Hero() {
 					{/* Social Proof & Stats Section */}
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-16 pt-12 border-t border-white/5 w-full max-w-3xl animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-500 pb-10">
 						{[
-							{ label: "Active Gatherings", value: "800+", Icon: Church },
-							{ label: "Worshippers", value: "15k+", Icon: Users },
-							{ label: "Monthly Events", value: "120+", Icon: Calendar },
+							{ label: "Active Gatherings", value: "80+", Icon: Church },
+							{ label: "Worshippers", value: "1k+", Icon: Users },
+							{ label: "Monthly Events", value: "12+", Icon: Calendar },
 						].map((stat, i) => (
 							<div key={i} className="flex flex-col items-center group">
 								<div className="p-3 rounded-2xl bg-white/5 mb-4 group-hover:bg-primary/10 transition-colors">

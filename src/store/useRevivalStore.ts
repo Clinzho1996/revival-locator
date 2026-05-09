@@ -287,6 +287,14 @@ interface RevivalState {
 	updateUserRole: (userId: string, role: "user" | "admin") => Promise<void>;
 	deleteUser: (userId: string) => Promise<void>;
 	allUsers: User[];
+	testimonies: any[];
+	pendingTestimonies: any[];
+	getTestimonies: () => Promise<void>;
+	getPendingTestimonies: () => Promise<void>;
+	createTestimony: (data: any) => Promise<void>;
+	updateTestimony: (id: string, data: any) => Promise<void>;
+	deleteTestimony: (id: string) => Promise<void>;
+	likeTestimony: (id: string) => Promise<void>;
 
 	// Utility
 	clearError: () => void;
@@ -313,6 +321,8 @@ export const useRevivalStore = create<RevivalState>()(
 	persist(
 		(set, get) => ({
 			// Initial state
+			testimonies: [],
+			pendingTestimonies: [],
 			blogs: [],
 			selectedBlog: null,
 			allUsers: [],
@@ -1228,6 +1238,121 @@ export const useRevivalStore = create<RevivalState>()(
 					throw error;
 				}
 			},
+			getTestimonies: async () => {
+				set({ isLoading: true, error: null });
+				try {
+					const response = await api.get("/testimonies");
+					set({
+						testimonies: response.data.data.testimonies,
+						isLoading: false,
+					});
+				} catch (error: any) {
+					set({
+						error:
+							error.response?.data?.message || "Failed to fetch testimonies",
+						isLoading: false,
+					});
+				}
+			},
+
+			getPendingTestimonies: async () => {
+				set({ isLoading: true, error: null });
+				try {
+					const response = await api.get("/testimonies/pending");
+					set({ pendingTestimonies: response.data.data, isLoading: false });
+				} catch (error: any) {
+					set({
+						error:
+							error.response?.data?.message ||
+							"Failed to fetch pending testimonies",
+						isLoading: false,
+					});
+				}
+			},
+
+			createTestimony: async (data) => {
+				set({ isLoading: true, error: null });
+				try {
+					const response = await api.post("/testimonies", data);
+					set((state) => ({
+						testimonies: [response.data.data, ...state.testimonies],
+						isLoading: false,
+					}));
+					toast.success("Testimony created successfully!");
+				} catch (error: any) {
+					set({
+						error:
+							error.response?.data?.message || "Failed to create testimony",
+						isLoading: false,
+					});
+					throw error;
+				}
+			},
+
+			updateTestimony: async (id, data) => {
+				set({ isLoading: true, error: null });
+				try {
+					const response = await api.put(`/testimonies/${id}`, data);
+					set((state) => ({
+						testimonies: state.testimonies.map((t) =>
+							t._id === id ? response.data.data : t,
+						),
+						pendingTestimonies: state.pendingTestimonies.map((t) =>
+							t._id === id ? response.data.data : t,
+						),
+						isLoading: false,
+					}));
+					toast.success("Testimony updated successfully!");
+				} catch (error: any) {
+					set({
+						error:
+							error.response?.data?.message || "Failed to update testimony",
+						isLoading: false,
+					});
+					throw error;
+				}
+			},
+
+			deleteTestimony: async (id) => {
+				set({ isLoading: true, error: null });
+				try {
+					await api.delete(`/testimonies/${id}`);
+					set((state) => ({
+						testimonies: state.testimonies.filter((t) => t._id !== id),
+						pendingTestimonies: state.pendingTestimonies.filter(
+							(t) => t._id !== id,
+						),
+						isLoading: false,
+					}));
+					toast.success("Testimony deleted successfully!");
+				} catch (error: any) {
+					set({
+						error:
+							error.response?.data?.message || "Failed to delete testimony",
+						isLoading: false,
+					});
+					throw error;
+				}
+			},
+
+			likeTestimony: async (id) => {
+				try {
+					const response = await api.post(`/testimonies/${id}/like`);
+					set((state) => ({
+						testimonies: state.testimonies.map((t) =>
+							t._id === id ? { ...t, likes: response.data.data.likes } : t,
+						),
+						pendingTestimonies: state.pendingTestimonies.map((t) =>
+							t._id === id ? { ...t, likes: response.data.data.likes } : t,
+						),
+					}));
+					return response.data;
+				} catch (error: any) {
+					console.error("Failed to like testimony:", error);
+					throw error;
+				}
+			},
+
 			// Admin actions
 			getAnalytics: async () => {
 				// Don't use isLoading from state as it might be stale
