@@ -390,19 +390,7 @@ export default function EventDetailsPage({
 								</TabsTrigger>
 							</TabsList>
 							<TabsContent value="reviews">
-								<ReviewSystem
-									reviews={reviews.map((r) => ({
-										id: r._id,
-										userName:
-											typeof r.user === "object" ? r.user.name : "Anonymous",
-										userAvatar: "",
-										rating: r.rating,
-										createdAt: r.createdAt || new Date().toISOString(),
-										comment: r.comment,
-										userId: typeof r.user === "object" ? r.user._id : "",
-									}))}
-									eventId={selectedEvent._id}
-								/>
+								<ReviewSystem eventId={selectedEvent._id} />
 							</TabsContent>
 							<TabsContent value="forum">
 								<CommunityForum
