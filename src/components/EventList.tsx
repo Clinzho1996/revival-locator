@@ -35,8 +35,10 @@ export function EventList({ initialEvents = [] }: EventListProps) {
 	const hasInitialized = useRef(false);
 	const isUsingInitialEvents = initialEvents.length > 0;
 
-	// Get events data - prioritize initialEvents from parent
-	const eventsData = isUsingInitialEvents ? initialEvents : apiEvents;
+	// Get events data - prioritize initialEvents from parent and filter only approved
+	const eventsData = (isUsingInitialEvents ? initialEvents : apiEvents).filter(
+		(event) => event.status === "approved",
+	);
 	const isLoading = storeLoading && !isUsingInitialEvents;
 
 	// Only fetch categories (always needed), but skip events if we have initialEvents
@@ -174,7 +176,7 @@ export function EventList({ initialEvents = [] }: EventListProps) {
 				<p className="text-slate-500 mt-2 max-w-sm mx-auto font-medium">
 					{searchQuery || activeCategory !== "All"
 						? "No events match your current filters. Try adjusting your search or category."
-						: "No events are currently available. Check back later for new events!"}
+						: "No approved events are currently available. Check back later for new events!"}
 				</p>
 				{(searchQuery || activeCategory !== "All") && (
 					<button
@@ -192,7 +194,7 @@ export function EventList({ initialEvents = [] }: EventListProps) {
 
 	return (
 		<div className="space-y-12" id="event-list">
-			{/* Search Bar - Only show if we're not in search results mode or always show for filtering */}
+			{/* Search Bar */}
 			<div className="relative max-w-2xl mx-auto">
 				<Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
 				<Input
@@ -253,16 +255,17 @@ export function EventList({ initialEvents = [] }: EventListProps) {
 					<EventCard key={featuredEvent._id} event={featuredEvent} />
 				)}
 
-				{/* Show other events */}
+				{/* Show other events for desktop */}
 				{otherEvents.map((event) => (
-					<div className="hidden md:block">
-						<EventCard key={event._id} event={event} />{" "}
+					<div key={event._id} className="hidden md:block">
+						<EventCard event={event} />
 					</div>
 				))}
 
+				{/* Show all events for mobile */}
 				{mobileEvents.map((event) => (
-					<div className="md:hidden">
-						<EventCard key={event._id} event={event} />
+					<div key={event._id} className="md:hidden">
+						<EventCard event={event} />
 					</div>
 				))}
 			</div>
@@ -314,11 +317,6 @@ function FeaturedEventCard({
 					<Badge className="bg-white/20 backdrop-blur-md border border-white/20 text-white px-4 py-1.5 rounded-full font-black text-xs uppercase tracking-widest">
 						{categoryName}
 					</Badge>
-					{event.status === "pending" && (
-						<Badge className="bg-yellow-500/20 backdrop-blur-md border border-yellow-500/30 text-yellow-300 px-4 py-1.5 rounded-full font-black text-xs uppercase tracking-widest">
-							Pending Approval
-						</Badge>
-					)}
 					{event.isFree && (
 						<Badge className="bg-green-500/20 backdrop-blur-md border border-green-500/30 text-green-300 px-4 py-1.5 rounded-full font-black text-xs uppercase tracking-widest">
 							Free Event
