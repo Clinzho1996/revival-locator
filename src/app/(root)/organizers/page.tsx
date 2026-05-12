@@ -17,6 +17,8 @@ import {
 	Bell,
 	Calendar,
 	CheckCircle,
+	ChevronLeft,
+	ChevronRight,
 	Church,
 	Clock,
 	Eye,
@@ -29,92 +31,91 @@ import {
 	Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export default function OrganizersPage() {
 	const router = useRouter();
-	const { isAuthenticated, user, login, register, isLoading } = useRevival();
+	const {
+		isAuthenticated,
+		user,
+		login,
+		register,
+		isLoading,
+		getAnalytics,
+		analytics,
+		getTestimonies,
+		testimonies,
+	} = useRevival();
 
 	const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 	const [isLogin, setIsLogin] = useState(true);
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [name, setName] = useState("");
+	const [currentTestimonialIndex, setCurrentTestimonialIndex] = useState(0);
+	const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
-	const handleHostEvent = () => {
-		if (isAuthenticated) {
-			router.push("/my-events");
-		} else {
-			setIsLoginModalOpen(true);
-		}
-	};
+	// Fetch analytics and testimonies on mount
+	useEffect(() => {
+		fetchData();
+	}, []);
 
-	const handleAuth = async (e: React.FormEvent) => {
-		e.preventDefault();
-		setIsSubmitting(true);
-
+	const fetchData = async () => {
 		try {
-			if (isLogin) {
-				const response = (await login(email, password)) as any;
-				toast.success("Welcome back! 🎉", {
-					description: `You've successfully logged in as ${email}`,
-				});
-				setIsLoginModalOpen(false);
-				resetForm();
-
-				if (response?.user?.role === "admin") {
-					router.push("/admin");
-				} else {
-					router.push("/my-events");
-				}
-			} else {
-				if (!name.trim()) {
-					toast.error("Name is required");
-					setIsSubmitting(false);
-					return;
-				}
-				if (password.length < 6) {
-					toast.error("Password must be at least 6 characters");
-					setIsSubmitting(false);
-					return;
-				}
-				await register(name, email, password);
-				toast.success("Account created! 🎉", {
-					description: `Welcome ${name}! You can now create events.`,
-				});
-				setIsLoginModalOpen(false);
-				resetForm();
-				router.push("/my-events");
-			}
-		} catch (error: any) {
-			toast.error(isLogin ? "Login failed" : "Registration failed", {
-				description: error.message || "Please try again",
-			});
-		} finally {
-			setIsSubmitting(false);
+			await getAnalytics();
+			await getTestimonies();
+		} catch (error) {
+			console.error("Failed to fetch data:", error);
 		}
 	};
 
-	const resetForm = () => {
-		setEmail("");
-		setPassword("");
-		setName("");
+	// Format numbers with K, M suffixes
+	const formatNumber = (num: number) => {
+		if (num >= 1000000) {
+			return (num / 1000000).toFixed(1) + "M";
+		}
+		if (num >= 1000) {
+			return (num / 1000).toFixed(1) + "k";
+		}
+		return num.toString();
 	};
 
-	const switchMode = () => {
-		setIsLogin(!isLogin);
-		setEmail("");
-		setPassword("");
-		setName("");
+	// Get real stats from analytics
+	const getRealStats = () => {
+		const totalEvents = analytics?.overview?.totalEvents || 0;
+		const totalUsers = analytics?.overview?.totalUsers || 0;
+
+		return {
+			eventsHosted: formatNumber(totalEvents) + "+",
+			worshippersReached: formatNumber(totalUsers) + "+",
+			satisfactionRate: "98%", // Default since we don't have this in analytics
+			citiesCovered: "50+", // Default since we don't have this in analytics
+		};
 	};
 
 	const stats = [
-		{ value: "500+", label: "Events Hosted", icon: Calendar },
-		{ value: "15k+", label: "Worshippers Reached", icon: Users },
-		{ value: "98%", label: "Satisfaction Rate", icon: Heart },
-		{ value: "50+", label: "Cities Covered", icon: TrendingUp },
+		{
+			value: getRealStats().eventsHosted,
+			label: "Events Hosted",
+			icon: Calendar,
+		},
+		{
+			value: getRealStats().worshippersReached,
+			label: "Worshippers Reached",
+			icon: Users,
+		},
+		{
+			value: getRealStats().satisfactionRate,
+			label: "Satisfaction Rate",
+			icon: Heart,
+		},
+		{
+			value: getRealStats().citiesCovered,
+			label: "Cities Covered",
+			icon: TrendingUp,
+		},
 	];
 
 	const steps = [
@@ -196,6 +197,107 @@ export default function OrganizersPage() {
 		},
 	];
 
+	// Filter approved testimonies only
+	const approvedTestimonies = testimonies.filter(
+		(t: any) => t.status === "approved",
+	);
+
+	// Auto-scroll carousel every 5 seconds
+	useEffect(() => {
+		if (!isAutoPlaying || approvedTestimonies.length === 0) return;
+
+		const interval = setInterval(() => {
+			setCurrentTestimonialIndex((prev) =>
+				prev === approvedTestimonies.length - 1 ? 0 : prev + 1,
+			);
+		}, 5000); // Change every 5 seconds
+
+		return () => clearInterval(interval);
+	}, [isAutoPlaying, approvedTestimonies.length]);
+
+	// Carousel navigation
+	const nextTestimonial = () => {
+		setCurrentTestimonialIndex((prev) =>
+			prev === approvedTestimonies.length - 1 ? 0 : prev + 1,
+		);
+	};
+
+	const prevTestimonial = () => {
+		setCurrentTestimonialIndex((prev) =>
+			prev === 0 ? approvedTestimonies.length - 1 : prev - 1,
+		);
+	};
+
+	const handleHostEvent = () => {
+		if (isAuthenticated) {
+			router.push("/my-events");
+		} else {
+			setIsLoginModalOpen(true);
+		}
+	};
+
+	const handleAuth = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setIsSubmitting(true);
+
+		try {
+			if (isLogin) {
+				const response = (await login(email, password)) as any;
+				toast.success("Welcome back! 🎉", {
+					description: `You've successfully logged in as ${email}`,
+				});
+				setIsLoginModalOpen(false);
+				resetForm();
+
+				if (response?.user?.role === "admin") {
+					router.push("/admin");
+				} else {
+					router.push("/my-events");
+				}
+			} else {
+				if (!name.trim()) {
+					toast.error("Name is required");
+					setIsSubmitting(false);
+					return;
+				}
+				if (password.length < 6) {
+					toast.error("Password must be at least 6 characters");
+					setIsSubmitting(false);
+					return;
+				}
+				await register(name, email, password);
+				toast.success("Account created! 🎉", {
+					description: `Welcome ${name}! You can now create events.`,
+				});
+				setIsLoginModalOpen(false);
+				resetForm();
+				router.push("/my-events");
+			}
+		} catch (error: any) {
+			toast.error(isLogin ? "Login failed" : "Registration failed", {
+				description: error.message || "Please try again",
+			});
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
+	const resetForm = () => {
+		setEmail("");
+		setPassword("");
+		setName("");
+	};
+
+	const switchMode = () => {
+		setIsLogin(!isLogin);
+		setEmail("");
+		setPassword("");
+		setName("");
+	};
+
+	// Get current testimonial
+	const currentTestimonial = approvedTestimonies[currentTestimonialIndex];
+
 	return (
 		<>
 			<div className="min-h-screen bg-gradient-to-b from-background to-primary/5">
@@ -243,7 +345,7 @@ export default function OrganizersPage() {
 					</div>
 				</div>
 
-				{/* Stats Section */}
+				{/* Stats Section - Updated with real data */}
 				<div className="container mx-auto px-4 py-16">
 					<div className="grid grid-cols-2 md:grid-cols-4 gap-8">
 						{stats.map((stat, i) => {
@@ -280,7 +382,6 @@ export default function OrganizersPage() {
 					</div>
 
 					<div className="relative">
-						{/* Connector Line - Fixed positioning */}
 						<div className="hidden md:block absolute top-24 left-0 right-0 h-0.5 bg-primary/20 z-0" />
 
 						<div className="grid grid-cols-1 md:grid-cols-5 gap-6 relative z-10">
@@ -352,26 +453,97 @@ export default function OrganizersPage() {
 					</div>
 				</div>
 
-				{/* Testimonial Section */}
+				{/* Testimonial Carousel Section - Dynamic from API */}
 				<div className="container mx-auto px-4 py-20">
-					<div className="max-w-4xl mx-auto text-center">
-						<div className="mb-8">
-							<Star className="w-12 h-12 text-primary mx-auto fill-primary/20" />
-						</div>
-						<p className="text-2xl md:text-3xl font-medium italic text-slate-700 mb-8">
-							"Since joining RevivalLocator, our conference attendance has
-							tripled. The platform made it so easy to reach believers who are
-							genuinely hungry for God."
-						</p>
-						<div>
-							<div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-3">
-								<Church className="w-8 h-8 text-primary" />
+					<div className="max-w-4xl mx-auto">
+						{approvedTestimonies.length > 0 ? (
+							<div className="relative">
+								{/* Carousel Controls */}
+								<button
+									onClick={prevTestimonial}
+									className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-12 lg:-translate-x-16 p-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors z-10">
+									<ChevronLeft className="w-6 h-6 text-primary" />
+								</button>
+								<button
+									onClick={nextTestimonial}
+									className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-12 lg:translate-x-16 p-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors z-10">
+									<ChevronRight className="w-6 h-6 text-primary" />
+								</button>
+
+								{/* Carousel Content */}
+								<div
+									className="text-center transition-all duration-500"
+									onMouseEnter={() => setIsAutoPlaying(false)}
+									onMouseLeave={() => setIsAutoPlaying(true)}>
+									<div className="mb-8">
+										{Array.from({ length: currentTestimonial.rating || 5 }).map(
+											(_, i) => (
+												<Star
+													key={i}
+													className="w-6 h-6 text-amber-500 inline-block fill-current mx-0.5"
+												/>
+											),
+										)}
+									</div>
+									<p className="text-2xl md:text-3xl font-medium italic text-slate-700 mb-8">
+										"{currentTestimonial.content}"
+									</p>
+									<div>
+										<div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-3">
+											{currentTestimonial.avatar ? (
+												<img
+													src={currentTestimonial.avatar}
+													alt={currentTestimonial.name}
+													className="w-full h-full rounded-full object-cover"
+												/>
+											) : (
+												<Church className="w-8 h-8 text-primary" />
+											)}
+										</div>
+										<p className="font-bold">{currentTestimonial.name}</p>
+										<p className="text-sm text-muted-foreground">
+											{currentTestimonial.event}
+										</p>
+									</div>
+								</div>
+
+								{/* Dot Indicators */}
+								<div className="flex justify-center gap-2 mt-8">
+									{approvedTestimonies.map((_: any, idx: number) => (
+										<button
+											key={idx}
+											onClick={() => setCurrentTestimonialIndex(idx)}
+											className={`w-2 h-2 rounded-full transition-all ${
+												idx === currentTestimonialIndex
+													? "w-6 bg-primary"
+													: "bg-primary/30 hover:bg-primary/50"
+											}`}
+										/>
+									))}
+								</div>
 							</div>
-							<p className="font-bold">Pastor Michael Ade</p>
-							<p className="text-sm text-muted-foreground">
-								City Revival Conference Organizer
-							</p>
-						</div>
+						) : (
+							// Fallback testimonial if no data
+							<div className="text-center">
+								<div className="mb-8">
+									<Star className="w-12 h-12 text-primary mx-auto fill-primary/20" />
+								</div>
+								<p className="text-2xl md:text-3xl font-medium italic text-slate-700 mb-8">
+									"Since joining RevivalLocator, our conference attendance has
+									tripled. The platform made it so easy to reach believers who
+									are genuinely hungry for God."
+								</p>
+								<div>
+									<div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-3">
+										<Church className="w-8 h-8 text-primary" />
+									</div>
+									<p className="font-bold">Pastor Michael Ade</p>
+									<p className="text-sm text-muted-foreground">
+										City Revival Conference Organizer
+									</p>
+								</div>
+							</div>
+						)}
 					</div>
 				</div>
 

@@ -13,15 +13,43 @@ import {
 	Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export function Hero() {
 	const router = useRouter();
-	const { searchEvents, isLoading } = useRevival();
+	const { searchEvents, isLoading, getAnalytics, analytics } = useRevival();
 	const [keyword, setKeyword] = useState("");
 	const [city, setCity] = useState("");
 	const [isSearching, setIsSearching] = useState(false);
+	const [stats, setStats] = useState({
+		totalEvents: 0,
+		totalUsers: 0,
+		totalReviews: 0,
+	});
+
+	useEffect(() => {
+		fetchStats();
+	}, []);
+
+	const fetchStats = async () => {
+		try {
+			await getAnalytics();
+		} catch (error) {
+			console.error("Failed to fetch stats:", error);
+		}
+	};
+
+	// Update stats when analytics data is available
+	useEffect(() => {
+		if (analytics?.overview) {
+			setStats({
+				totalEvents: analytics.overview.totalEvents || 0,
+				totalUsers: analytics.overview.totalUsers || 0,
+				totalReviews: analytics.overview.totalReviews || 0,
+			});
+		}
+	}, [analytics]);
 
 	const trendingTags = [
 		"Revival",
@@ -81,6 +109,17 @@ export function Hero() {
 		if (e.key === "Enter") {
 			handleSearch();
 		}
+	};
+
+	// Format numbers with K, M suffixes
+	const formatNumber = (num: number) => {
+		if (num >= 1000000) {
+			return (num / 1000000).toFixed(1) + "M";
+		}
+		if (num >= 1000) {
+			return (num / 1000).toFixed(1) + "k";
+		}
+		return num.toString();
 	};
 
 	return (
@@ -183,11 +222,9 @@ export function Hero() {
 									if ("geolocation" in navigator) {
 										navigator.geolocation.getCurrentPosition(
 											async (position) => {
-												// You can reverse geocode or just use coordinates
 												toast.info("Location detected", {
 													description: `Searching near lat: ${position.coords.latitude.toFixed(2)}, lon: ${position.coords.longitude.toFixed(2)}`,
 												});
-												// You could add a reverse geocoding API here to get city name
 											},
 											(error) => {
 												toast.error("Location access denied", {
@@ -222,25 +259,41 @@ export function Hero() {
 						</div>
 					</div>
 
-					{/* Social Proof & Stats Section */}
+					{/* Social Proof & Stats Section - Now with real data */}
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-16 pt-12 border-t border-white/5 w-full max-w-3xl animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-500 pb-10">
-						{[
-							{ label: "Active Gatherings", value: "80+", Icon: Church },
-							{ label: "Worshippers", value: "1k+", Icon: Users },
-							{ label: "Monthly Events", value: "12+", Icon: Calendar },
-						].map((stat, i) => (
-							<div key={i} className="flex flex-col items-center group">
-								<div className="p-3 rounded-2xl bg-white/5 mb-4 group-hover:bg-primary/10 transition-colors">
-									<stat.Icon className="w-6 h-6 text-white/40 group-hover:text-primary transition-colors" />
-								</div>
-								<p className="text-3xl font-black bg-gradient-to-b from-white to-white/60 text-transparent bg-clip-text">
-									{stat.value}
-								</p>
-								<p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mt-2 text-center">
-									{stat.label}
-								</p>
+						<div className="flex flex-col items-center group">
+							<div className="p-3 rounded-2xl bg-white/5 mb-4 group-hover:bg-primary/10 transition-colors">
+								<Church className="w-6 h-6 text-white/40 group-hover:text-primary transition-colors" />
 							</div>
-						))}
+							<p className="text-3xl font-black bg-gradient-to-b from-white to-white/60 text-transparent bg-clip-text">
+								{formatNumber(stats.totalEvents)}+
+							</p>
+							<p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mt-2 text-center">
+								Active Events
+							</p>
+						</div>
+						<div className="flex flex-col items-center group">
+							<div className="p-3 rounded-2xl bg-white/5 mb-4 group-hover:bg-primary/10 transition-colors">
+								<Users className="w-6 h-6 text-white/40 group-hover:text-primary transition-colors" />
+							</div>
+							<p className="text-3xl font-black bg-gradient-to-b from-white to-white/60 text-transparent bg-clip-text">
+								{formatNumber(stats.totalUsers)}+
+							</p>
+							<p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mt-2 text-center">
+								Worshippers
+							</p>
+						</div>
+						<div className="flex flex-col items-center group">
+							<div className="p-3 rounded-2xl bg-white/5 mb-4 group-hover:bg-primary/10 transition-colors">
+								<Calendar className="w-6 h-6 text-white/40 group-hover:text-primary transition-colors" />
+							</div>
+							<p className="text-3xl font-black bg-gradient-to-b from-white to-white/60 text-transparent bg-clip-text">
+								{formatNumber(Math.ceil(stats.totalEvents / 12))}+
+							</p>
+							<p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mt-2 text-center">
+								Monthly Events
+							</p>
+						</div>
 					</div>
 
 					{/* Quick Filters */}
@@ -253,14 +306,16 @@ export function Hero() {
 									onClick={() => {
 										if (filter === "Free Events") {
 											setKeyword("free");
+											setTimeout(() => handleSearch(), 100);
 										} else if (filter === "This Weekend") {
-											// You can add date filtering logic
 											toast.info("Coming soon", {
 												description: "Date filtering will be available soon!",
 											});
-											return;
+										} else {
+											toast.info("Coming soon", {
+												description: `${filter} filtering will be available soon!`,
+											});
 										}
-										handleSearch();
 									}}
 									className="text-xs text-white/30 hover:text-white/60 transition-colors">
 									{filter}

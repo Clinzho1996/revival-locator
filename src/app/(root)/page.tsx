@@ -3,9 +3,29 @@
 import { EventList } from "@/components/EventList";
 import { Hero } from "@/components/Hero";
 import { useRevival } from "@/hooks/useRevival";
-import { CheckCircle, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { toast } from "sonner"; // Import sonner toast
+import {
+	Activity,
+	Bell,
+	CheckCircle,
+	Church,
+	Cross,
+	Flame,
+	Globe,
+	Loader2,
+	Mail,
+	MapPin,
+	MessageCircle,
+	Mic2,
+	Mountain,
+	Music,
+	Notebook,
+	ShieldCheck,
+	Sparkles,
+	Tent,
+	Users,
+} from "lucide-react";
+import { JSX, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 export default function Home() {
 	const {
@@ -99,7 +119,7 @@ export default function Home() {
 					"You'll now receive the latest revival updates in your inbox.",
 				duration: 5000,
 				position: "top-center",
-				icon: "✝️",
+				icon: <Sparkles className="w-5 h-5" />,
 			});
 
 			setEmail("");
@@ -125,40 +145,40 @@ export default function Home() {
 	};
 
 	// Icon mapping for categories
-	const getCategoryIcon = (categoryName: string): string => {
-		const iconMap: Record<string, string> = {
-			Revival: "🔥",
-			Worship: "🎸",
-			Youth: "🙌",
-			Conference: "📢",
-			Prayer: "🙏",
-			Healing: "✨",
-			Concert: "🎤",
-			Seminar: "📚",
-			Camp: "🏕️",
-			Retreat: "🏔️",
-			Crusade: "🌍",
-			Default: "✝️",
+	const getCategoryIcon = (categoryName: string) => {
+		const iconMap: Record<string, JSX.Element> = {
+			Revival: <Flame className="w-8 h-8 text-orange-500" />,
+			Worship: <Music className="w-8 h-8 text-purple-500" />,
+			Youth: <Users className="w-8 h-8 text-blue-500" />,
+			Conference: <Mic2 className="w-8 h-8 text-indigo-500" />,
+			Prayer: <Church className="w-8 h-8 text-red-500" />,
+			Healing: <Activity className="w-8 h-8 text-green-500" />,
+			Concert: <Music className="w-8 h-8 text-pink-500" />,
+			Seminar: <Notebook className="w-8 h-8 text-yellow-600" />,
+			Camp: <Tent className="w-8 h-8 text-emerald-600" />,
+			Retreat: <Mountain className="w-8 h-8 text-teal-600" />,
+			Crusade: <Globe className="w-8 h-8 text-cyan-600" />,
+			Default: <Cross className="w-8 h-8 text-primary" />,
 		};
 		return iconMap[categoryName] || iconMap.Default;
 	};
 
-	// Featured features data
+	// Featured features data with icons
 	const features = [
 		{
 			title: "Near You",
 			desc: "Smart geolocation finds the closest spiritual gatherings instantly.",
-			icon: "📍",
+			icon: <MapPin className="w-8 h-8 text-primary" />,
 		},
 		{
 			title: "Vetted Events",
 			desc: "Verified organizers ensure high-quality and safe worship environments.",
-			icon: "✅",
+			icon: <ShieldCheck className="w-8 h-8 text-primary" />,
 		},
 		{
 			title: "Community Driven",
 			desc: "Read testimonies and reviews from people who attended previous events.",
-			icon: "💬",
+			icon: <MessageCircle className="w-8 h-8 text-primary" />,
 		},
 	];
 
@@ -199,9 +219,9 @@ export default function Home() {
 									}
 								}}
 								className="group p-6 rounded-3xl bg-card border border-primary/5 hover:border-primary/20 hover:shadow-xl transition-all cursor-pointer text-center space-y-3">
-								<span className="text-4xl group-hover:scale-125 transition-transform block">
+								<div className="flex justify-center group-hover:scale-125 transition-transform">
 									{getCategoryIcon(category.name)}
-								</span>
+								</div>
 								<h3 className="font-bold">{category.name}</h3>
 								<p className="text-xs text-muted-foreground">
 									{categoryEventCounts[category.name] || 0} Events
@@ -239,7 +259,7 @@ export default function Home() {
 							<div
 								key={i}
 								className="space-y-4 p-8 rounded-[2rem] bg-background/50 backdrop-blur-sm border border-primary/5 shadow-sm hover:shadow-md transition-shadow">
-								<div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-3xl mb-6">
+								<div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
 									{feature.icon}
 								</div>
 								<h3 className="text-xl font-bold">{feature.title}</h3>
@@ -260,6 +280,9 @@ export default function Home() {
 					<div className="absolute bottom-0 left-0 w-96 h-96 bg-orange-500/10 rounded-full -ml-32 -mb-32 blur-[100px]" />
 
 					<div className="relative z-10 max-w-2xl mx-auto space-y-4">
+						<div className="flex justify-center">
+							<Bell className="w-16 h-16 text-white/80" />
+						</div>
 						<h2 className="text-3xl md:text-5xl font-bold">
 							Never Miss a Revival
 						</h2>
@@ -279,16 +302,21 @@ export default function Home() {
 						<form
 							onSubmit={handleSubscribe}
 							className="flex flex-col sm:flex-row gap-4 mt-8">
-							<input
-								type="email"
-								value={email}
-								onChange={(e) => setEmail(e.target.value)}
-								placeholder={
-									isAuthenticated && user ? `${user.email}` : "Enter your email"
-								}
-								className="flex-grow h-14 rounded-2xl px-6 bg-white/10 border border-white/20 text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-white/30 backdrop-blur-sm"
-								disabled={isSubscribing}
-							/>
+							<div className="relative flex-grow">
+								<Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/40" />
+								<input
+									type="email"
+									value={email}
+									onChange={(e) => setEmail(e.target.value)}
+									placeholder={
+										isAuthenticated && user
+											? `${user.email}`
+											: "Enter your email"
+									}
+									className="w-full h-14 rounded-2xl pl-12 pr-6 bg-white/10 border border-white/20 text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-white/30 backdrop-blur-sm"
+									disabled={isSubscribing}
+								/>
+							</div>
 							<button
 								type="submit"
 								disabled={isSubscribing}

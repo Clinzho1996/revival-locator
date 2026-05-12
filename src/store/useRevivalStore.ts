@@ -289,9 +289,10 @@ interface RevivalState {
 	allUsers: User[];
 	testimonies: any[];
 	pendingTestimonies: any[];
+	submitPublicTestimony: (data: any) => Promise<void>;
+	createTestimony: (data: any) => Promise<void>;
 	getTestimonies: () => Promise<void>;
 	getPendingTestimonies: () => Promise<void>;
-	createTestimony: (data: any) => Promise<void>;
 	updateTestimony: (id: string, data: any) => Promise<void>;
 	deleteTestimony: (id: string) => Promise<void>;
 	likeTestimony: (id: string) => Promise<void>;
@@ -1238,6 +1239,7 @@ export const useRevivalStore = create<RevivalState>()(
 					throw error;
 				}
 			},
+
 			getTestimonies: async () => {
 				set({ isLoading: true, error: null });
 				try {
@@ -1267,6 +1269,23 @@ export const useRevivalStore = create<RevivalState>()(
 							"Failed to fetch pending testimonies",
 						isLoading: false,
 					});
+				}
+			},
+
+			submitPublicTestimony: async (data: any) => {
+				set({ isLoading: true, error: null });
+				try {
+					const response = await api.post("/testimonies/public", data);
+					set({ isLoading: false });
+					toast.success("Testimony submitted for review!");
+					return response.data;
+				} catch (error: any) {
+					set({
+						error:
+							error.response?.data?.message || "Failed to submit testimony",
+						isLoading: false,
+					});
+					throw error;
 				}
 			},
 
