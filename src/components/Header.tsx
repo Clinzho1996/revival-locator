@@ -20,11 +20,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRevival } from "@/hooks/useRevival";
+import axios from "axios";
 import {
 	Bookmark,
 	Calendar,
 	ChevronDown,
+	Key,
+	Loader2,
+	Lock,
 	LogOut,
+	Mail,
 	Menu,
 	Settings,
 	User,
@@ -49,6 +54,17 @@ export function Header() {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 	const mobileMenuRef = useRef<HTMLDivElement>(null);
+
+	// Forgot password states
+	const [showForgotPassword, setShowForgotPassword] = useState(false);
+	const [resetStep, setResetStep] = useState<"email" | "otp" | "reset">(
+		"email",
+	);
+	const [resetEmail, setResetEmail] = useState("");
+	const [otp, setOtp] = useState("");
+	const [newPassword, setNewPassword] = useState("");
+	const [confirmPassword, setConfirmPassword] = useState("");
+	const [isResetLoading, setIsResetLoading] = useState(false);
 
 	const navLinks = [
 		{ href: "/", label: "Find Events" },
@@ -94,7 +110,6 @@ export function Header() {
 				setIsLoginModalOpen(false);
 				resetForm();
 
-				// Check if the logged-in user is admin and redirect
 				if (response?.user?.role === "admin") {
 					router.push("/admin");
 				}
@@ -120,7 +135,6 @@ export function Header() {
 				setIsLoginModalOpen(false);
 				resetForm();
 
-				// Check if the registered user is admin (unlikely for new registrations, but just in case)
 				if (response?.user?.role === "admin") {
 					router.push("/admin");
 				}
@@ -135,16 +149,92 @@ export function Header() {
 		}
 	};
 
+	const handleSendOTP = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!resetEmail) {
+			toast.error("Email is required");
+			return;
+		}
+
+		setIsResetLoading(true);
+		try {
+			await axios.post(
+				`${process.env.NEXT_PUBLIC_API_URL || "https://revival-locator-backend.onrender.com"}/api/auth/forgot-password`,
+				{ email: resetEmail },
+			);
+			toast.success("OTP sent to your email!");
+			setResetStep("otp");
+		} catch (error: any) {
+			toast.error(error.response?.data?.message || "Failed to send OTP");
+		} finally {
+			setIsResetLoading(false);
+		}
+	};
+
+	const handleVerifyOTP = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!otp || otp.length !== 6) {
+			toast.error("Please enter a valid 6-digit OTP");
+			return;
+		}
+
+		setIsResetLoading(true);
+		try {
+			await axios.post(
+				`${process.env.NEXT_PUBLIC_API_URL || "https://revival-locator-backend.onrender.com"}/api/auth/verify-otp`,
+				{ email: resetEmail, otp },
+			);
+			toast.success("OTP verified!");
+			setResetStep("reset");
+		} catch (error: any) {
+			toast.error(error.response?.data?.message || "Invalid OTP");
+		} finally {
+			setIsResetLoading(false);
+		}
+	};
+
+	const handleResetPassword = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (newPassword.length < 6) {
+			toast.error("Password must be at least 6 characters");
+			return;
+		}
+		if (newPassword !== confirmPassword) {
+			toast.error("Passwords do not match");
+			return;
+		}
+
+		setIsResetLoading(true);
+		try {
+			await axios.post(
+				`${process.env.NEXT_PUBLIC_API_URL || "https://revival-locator-backend.onrender.com"}/api/auth/reset-password`,
+				{ email: resetEmail, otp, newPassword },
+			);
+			toast.success(
+				"Password reset successfully! Please login with your new password.",
+			);
+			// Reset forgot password state and go back to login
+			setShowForgotPassword(false);
+			setResetStep("email");
+			setResetEmail("");
+			setOtp("");
+			setNewPassword("");
+			setConfirmPassword("");
+		} catch (error: any) {
+			toast.error(error.response?.data?.message || "Failed to reset password");
+		} finally {
+			setIsResetLoading(false);
+		}
+	};
+
 	const resetForm = () => {
 		setEmail("");
 		setPassword("");
 		setName("");
-		// Don't reset isLogin here - keep it as is
 	};
 
 	const switchMode = () => {
 		setIsLogin(!isLogin);
-		// Clear form when switching modes
 		setEmail("");
 		setPassword("");
 		setName("");
@@ -165,6 +255,15 @@ export function Header() {
 			.join("")
 			.toUpperCase()
 			.slice(0, 2);
+	};
+
+	const closeForgotPassword = () => {
+		setShowForgotPassword(false);
+		setResetStep("email");
+		setResetEmail("");
+		setOtp("");
+		setNewPassword("");
+		setConfirmPassword("");
 	};
 
 	// Don't render on server to prevent hydration mismatch
@@ -189,10 +288,8 @@ export function Header() {
 						<Image src="/images/logo.png" alt="Logo" width={100} height={100} />
 					</Link>
 
-					{/* Desktop Navigation - Hide admin links for non-admins */}
 					<nav className="hidden md:flex items-center space-x-8 text-sm font-medium">
 						{navLinks.map((link) => {
-							// Hide bookmarks from nav if not authenticated
 							if (link.href === "/bookmarks" && !isAuthenticated) {
 								return null;
 							}
@@ -213,7 +310,6 @@ export function Header() {
 								</Link>
 							);
 						})}
-						{/* Admin link - only show for admins */}
 						{isAuthenticated && user?.role === "admin" && (
 							<Link
 								href="/admin"
@@ -230,9 +326,7 @@ export function Header() {
 						)}
 					</nav>
 
-					{/* User Menu / Auth Button */}
 					<div className="flex items-center space-x-4">
-						{/* Mobile Menu Button */}
 						<Button
 							size="icon"
 							variant="ghost"
@@ -245,7 +339,6 @@ export function Header() {
 							)}
 						</Button>
 
-						{/* Desktop User Section */}
 						{isAuthenticated && user ? (
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
@@ -313,7 +406,8 @@ export function Header() {
 							<Button
 								onClick={() => {
 									setIsLoginModalOpen(true);
-									setIsLogin(true); // Reset to login mode when opening modal
+									setIsLogin(true);
+									setShowForgotPassword(false);
 									setEmail("");
 									setPassword("");
 									setName("");
@@ -326,14 +420,12 @@ export function Header() {
 					</div>
 				</div>
 
-				{/* Mobile Navigation Menu */}
 				{isMobileMenuOpen && (
 					<div
 						ref={mobileMenuRef}
 						className="absolute top-full left-0 right-0 bg-background/95 backdrop-blur-md border-b border-white/5 md:hidden animate-in slide-in-from-top-2 duration-200">
 						<nav className="flex flex-col p-4 space-y-3">
 							{navLinks.map((link) => {
-								// Hide bookmarks from mobile nav if not authenticated
 								if (link.href === "/bookmarks" && !isAuthenticated) {
 									return null;
 								}
@@ -352,7 +444,6 @@ export function Header() {
 									</Link>
 								);
 							})}
-							{/* Admin link in mobile menu */}
 							{isAuthenticated && user?.role === "admin" && (
 								<Link
 									href="/admin"
@@ -384,6 +475,7 @@ export function Header() {
 										setIsMobileMenuOpen(false);
 										setIsLoginModalOpen(true);
 										setIsLogin(true);
+										setShowForgotPassword(false);
 										setEmail("");
 										setPassword("");
 										setName("");
@@ -397,100 +489,270 @@ export function Header() {
 				)}
 			</header>
 
-			{/* Auth Modal */}
+			{/* Auth Modal with Forgot Password Integration */}
 			<Dialog open={isLoginModalOpen} onOpenChange={setIsLoginModalOpen}>
 				<DialogContent className="sm:max-w-[425px] rounded-2xl">
-					<DialogHeader>
-						<DialogTitle className="text-2xl font-bold text-center">
-							{isLogin ? "Welcome Back" : "Create an Account"}
-						</DialogTitle>
-						<DialogDescription className="text-center">
-							{isLogin
-								? "Sign in to access your bookmarks and personalized events"
-								: "Join the Revival community to discover and save events"}
-						</DialogDescription>
-					</DialogHeader>
+					{!showForgotPassword ? (
+						// Login/Signup Form
+						<>
+							<DialogHeader>
+								<DialogTitle className="text-2xl font-bold text-center">
+									{isLogin ? "Welcome Back" : "Create an Account"}
+								</DialogTitle>
+								<DialogDescription className="text-center">
+									{isLogin
+										? "Sign in to access your bookmarks and personalized events"
+										: "Join the Revival community to discover and save events"}
+								</DialogDescription>
+							</DialogHeader>
 
-					<form onSubmit={handleAuth} className="space-y-4 mt-4">
-						{!isLogin && (
-							<div className="space-y-2">
-								<Label htmlFor="name">Full Name</Label>
-								<Input
-									id="name"
-									type="text"
-									placeholder="John Doe"
-									value={name}
-									onChange={(e) => setName(e.target.value)}
-									disabled={isSubmitting}
-									className="rounded-xl"
-									autoFocus={!isLogin}
-								/>
-							</div>
-						)}
+							<form onSubmit={handleAuth} className="space-y-4 mt-4">
+								{!isLogin && (
+									<div className="space-y-2">
+										<Label htmlFor="name">Full Name</Label>
+										<Input
+											id="name"
+											type="text"
+											placeholder="John Doe"
+											value={name}
+											onChange={(e) => setName(e.target.value)}
+											disabled={isSubmitting}
+											className="rounded-xl"
+											autoFocus={!isLogin}
+										/>
+									</div>
+								)}
 
-						<div className="space-y-2">
-							<Label htmlFor="email">Email</Label>
-							<Input
-								id="email"
-								type="email"
-								placeholder="you@example.com"
-								value={email}
-								onChange={(e) => setEmail(e.target.value)}
-								required
-								disabled={isSubmitting}
-								className="rounded-xl"
-								autoFocus={isLogin}
-							/>
-						</div>
-
-						<div className="space-y-2">
-							<Label htmlFor="password">Password</Label>
-							<Input
-								id="password"
-								type="password"
-								placeholder={
-									isLogin
-										? "Enter your password"
-										: "Create a password (min. 6 characters)"
-								}
-								value={password}
-								onChange={(e) => setPassword(e.target.value)}
-								required
-								disabled={isSubmitting}
-								className="rounded-xl"
-							/>
-						</div>
-
-						<Button
-							type="submit"
-							className="w-full rounded-xl h-11 bg-primary hover:bg-primary/90"
-							disabled={isSubmitting}>
-							{isSubmitting ? (
-								<div className="flex items-center gap-2">
-									<div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-									{isLogin ? "Signing in..." : "Creating account..."}
+								<div className="space-y-2">
+									<Label htmlFor="email">Email</Label>
+									<Input
+										id="email"
+										type="email"
+										placeholder="you@example.com"
+										value={email}
+										onChange={(e) => setEmail(e.target.value)}
+										required
+										disabled={isSubmitting}
+										className="rounded-xl"
+										autoFocus={isLogin}
+									/>
 								</div>
-							) : isLogin ? (
-								"Sign In"
-							) : (
-								"Create Account"
-							)}
-						</Button>
-					</form>
 
-					<div className="mt-4 text-center text-sm">
-						<span className="text-muted-foreground">
-							{isLogin
-								? "Don't have an account? "
-								: "Already have an account? "}
-						</span>
-						<button
-							type="button"
-							onClick={switchMode}
-							className="text-primary hover:underline font-semibold">
-							{isLogin ? "Sign Up" : "Sign In"}
-						</button>
-					</div>
+								<div className="space-y-2">
+									<Label htmlFor="password">Password</Label>
+									<Input
+										id="password"
+										type="password"
+										placeholder={
+											isLogin
+												? "Enter your password"
+												: "Create a password (min. 6 characters)"
+										}
+										value={password}
+										onChange={(e) => setPassword(e.target.value)}
+										required
+										disabled={isSubmitting}
+										className="rounded-xl"
+									/>
+								</div>
+
+								{isLogin && (
+									<div className="flex flex-row justify-end">
+										<button
+											type="button"
+											onClick={() => {
+												setShowForgotPassword(true);
+												setResetStep("email");
+												setResetEmail("");
+												setOtp("");
+												setNewPassword("");
+												setConfirmPassword("");
+											}}
+											className="text-sm text-primary hover:underline">
+											Forgot Password?
+										</button>
+									</div>
+								)}
+
+								<Button
+									type="submit"
+									className="w-full rounded-xl h-11 bg-primary hover:bg-primary/90"
+									disabled={isSubmitting}>
+									{isSubmitting ? (
+										<div className="flex items-center gap-2">
+											<div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+											{isLogin ? "Signing in..." : "Creating account..."}
+										</div>
+									) : isLogin ? (
+										"Sign In"
+									) : (
+										"Create Account"
+									)}
+								</Button>
+							</form>
+
+							<div className="mt-4 text-center text-sm">
+								<span className="text-muted-foreground">
+									{isLogin
+										? "Don't have an account? "
+										: "Already have an account? "}
+								</span>
+								<button
+									type="button"
+									onClick={switchMode}
+									className="text-primary hover:underline font-semibold">
+									{isLogin ? "Sign Up" : "Sign In"}
+								</button>
+							</div>
+						</>
+					) : (
+						// Forgot Password Flow
+						<>
+							<DialogHeader>
+								<DialogTitle className="text-2xl font-bold text-center">
+									{resetStep === "email" && "Forgot Password"}
+									{resetStep === "otp" && "Enter OTP"}
+									{resetStep === "reset" && "Reset Password"}
+								</DialogTitle>
+								<DialogDescription className="text-center">
+									{resetStep === "email" &&
+										"Enter your email to receive a password reset OTP"}
+									{resetStep === "otp" &&
+										"Enter the 6-digit code sent to your email"}
+									{resetStep === "reset" && "Create your new password"}
+								</DialogDescription>
+							</DialogHeader>
+
+							{resetStep === "email" && (
+								<form onSubmit={handleSendOTP} className="space-y-4 mt-4">
+									<div className="space-y-2">
+										<Label htmlFor="resetEmail">Email Address</Label>
+										<div className="relative">
+											<Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+											<Input
+												id="resetEmail"
+												type="email"
+												placeholder="you@example.com"
+												value={resetEmail}
+												onChange={(e) => setResetEmail(e.target.value)}
+												className="pl-10 rounded-xl"
+												required
+											/>
+										</div>
+									</div>
+									<Button
+										type="submit"
+										className="w-full rounded-xl"
+										disabled={isResetLoading}>
+										{isResetLoading ? (
+											<Loader2 className="w-4 h-4 animate-spin" />
+										) : (
+											"Send OTP"
+										)}
+									</Button>
+								</form>
+							)}
+
+							{resetStep === "otp" && (
+								<form onSubmit={handleVerifyOTP} className="space-y-4 mt-4">
+									<div className="space-y-2">
+										<Label htmlFor="otp">6-Digit OTP</Label>
+										<div className="relative">
+											<Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+											<Input
+												id="otp"
+												type="text"
+												maxLength={6}
+												placeholder="000000"
+												value={otp}
+												onChange={(e) =>
+													setOtp(e.target.value.replace(/\D/g, ""))
+												}
+												className="pl-10 text-center text-2xl tracking-widest rounded-xl"
+												required
+											/>
+										</div>
+										<p className="text-xs text-muted-foreground text-center mt-2">
+											Didn't receive the code?{" "}
+											<button
+												type="button"
+												onClick={handleSendOTP}
+												className="text-primary hover:underline">
+												Resend OTP
+											</button>
+										</p>
+									</div>
+									<Button
+										type="submit"
+										className="w-full rounded-xl"
+										disabled={isResetLoading}>
+										{isResetLoading ? (
+											<Loader2 className="w-4 h-4 animate-spin" />
+										) : (
+											"Verify OTP"
+										)}
+									</Button>
+								</form>
+							)}
+
+							{resetStep === "reset" && (
+								<form onSubmit={handleResetPassword} className="space-y-4 mt-4">
+									<div className="space-y-2">
+										<Label htmlFor="newPassword">New Password</Label>
+										<div className="relative">
+											<Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+											<Input
+												id="newPassword"
+												type="password"
+												placeholder="••••••••"
+												value={newPassword}
+												onChange={(e) => setNewPassword(e.target.value)}
+												className="pl-10 rounded-xl"
+												required
+											/>
+										</div>
+										<p className="text-xs text-muted-foreground">
+											Minimum 6 characters
+										</p>
+									</div>
+									<div className="space-y-2">
+										<Label htmlFor="confirmPassword">Confirm Password</Label>
+										<div className="relative">
+											<Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+											<Input
+												id="confirmPassword"
+												type="password"
+												placeholder="••••••••"
+												value={confirmPassword}
+												onChange={(e) => setConfirmPassword(e.target.value)}
+												className="pl-10 rounded-xl"
+												required
+											/>
+										</div>
+									</div>
+									<Button
+										type="submit"
+										className="w-full rounded-xl"
+										disabled={isResetLoading}>
+										{isResetLoading ? (
+											<Loader2 className="w-4 h-4 animate-spin" />
+										) : (
+											"Reset Password"
+										)}
+									</Button>
+								</form>
+							)}
+
+							<div className="mt-4 text-center text-sm">
+								<button
+									type="button"
+									onClick={closeForgotPassword}
+									className="text-primary hover:underline">
+									Back to Login
+								</button>
+							</div>
+						</>
+					)}
 				</DialogContent>
 			</Dialog>
 		</>
