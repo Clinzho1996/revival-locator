@@ -35,6 +35,8 @@ export default function Home() {
 		isLoading: isStoreLoading,
 		user,
 		isAuthenticated,
+		events,
+		getEvents,
 	} = useRevival();
 
 	const [email, setEmail] = useState("");
@@ -44,38 +46,60 @@ export default function Home() {
 	>({});
 	const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
-	// Fetch categories on mount
+	// Fetch categories and events on mount
 	useEffect(() => {
 		const fetchData = async () => {
 			setIsLoadingCategories(true);
-			await getCategories();
+			await Promise.all([getCategories(), getEvents()]);
 			setIsLoadingCategories(false);
 		};
 		fetchData();
 	}, []);
 
-	// Fetch event counts for each category
+	// Calculate event counts for each category based on actual events
 	useEffect(() => {
-		if (categories.length > 0) {
-			const fetchCounts = async () => {
-				const counts: Record<string, number> = {};
-				for (const category of categories) {
-					try {
-						const response = await fetch(
-							`https://revival-locator-backend.onrender.com/api/events?category=${category._id}`,
+		if (categories.length > 0 && events.length > 0) {
+			const counts: Record<string, number> = {};
+
+			// Initialize counts for all categories
+			categories.forEach((category) => {
+				counts[category.name] = 0;
+			});
+
+			// Count events per category
+			events.forEach((event) => {
+				// Get category name from event
+				let categoryName = "Uncategorized";
+				if (event.category) {
+					if (typeof event.category === "object") {
+						categoryName = event.category.name;
+					} else if (typeof event.category === "string") {
+						// Find category by ID
+						const foundCategory = categories.find(
+							(c) => c._id === event.category,
 						);
-						const events = await response.json();
-						counts[category.name] =
-							events.length || Math.floor(Math.random() * 100) + 10;
-					} catch (error) {
-						counts[category.name] = Math.floor(Math.random() * 100) + 10;
+						if (foundCategory) {
+							categoryName = foundCategory.name;
+						}
 					}
 				}
-				setCategoryEventCounts(counts);
-			};
-			fetchCounts();
+
+				// Only count approved events
+				if (event.status === "approved") {
+					counts[categoryName] = (counts[categoryName] || 0) + 1;
+				}
+			});
+
+			setCategoryEventCounts(counts);
+		} else if (categories.length > 0) {
+			// If no events, set all counts to 0
+			const counts: Record<string, number> = {};
+			categories.forEach((category) => {
+				counts[category.name] = 0;
+			});
+			setCategoryEventCounts(counts);
 		}
-	}, [categories]);
+	}, [categories, events]);
 
 	const handleSubscribe = async (e: React.FormEvent) => {
 		e.preventDefault();
