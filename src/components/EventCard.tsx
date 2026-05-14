@@ -1,12 +1,12 @@
-// components/EventCard.tsx (update the existing one)
+// components/EventCard.tsx
 "use client";
 
 import { Badge } from "@/components/ui/badge";
 import { useRevival } from "@/hooks/useRevival";
-import { format, parseISO } from "date-fns";
-import { Calendar, Heart, MapPin, Users } from "lucide-react";
+import { differenceInMinutes, format, isToday, parseISO } from "date-fns";
+import { Calendar, Heart, MapPin, Users, Zap } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface EventCardProps {
@@ -22,9 +22,54 @@ export function EventCard({
 }: EventCardProps) {
 	const { toggleBookmark, isBookmarked, isAuthenticated } = useRevival();
 	const [isBookmarking, setIsBookmarking] = useState(false);
+	const [isLive, setIsLive] = useState(false);
 
 	const eventDate = parseISO(event.date);
 	const isBookmarkedFlag = isBookmarked(event._id);
+
+	// Check if event is live (happening today and within time range)
+	useEffect(() => {
+		const checkIfLive = () => {
+			const now = new Date();
+			const eventStart = parseISO(event.date);
+
+			// If event has time specified
+			if (event.time) {
+				const [hours, minutes] = event.time.split(":").map(Number);
+				const eventDateTime = new Date(eventStart);
+				eventDateTime.setHours(hours || 0, minutes || 0);
+
+				// Event is live if:
+				// 1. It's today
+				// 2. Current time is within 2 hours before start time (pre-live) or during the event
+				// 3. Event hasn't ended (within 3 hours of start time)
+				if (isToday(eventStart)) {
+					const minutesUntilStart = differenceInMinutes(eventDateTime, now);
+					const minutesSinceStart = differenceInMinutes(now, eventDateTime);
+
+					// Show LIVE if within 2 hours before start OR within 3 hours after start
+					if (minutesUntilStart <= 120 && minutesUntilStart > 0) {
+						setIsLive(true); // Coming up soon
+					} else if (minutesSinceStart >= 0 && minutesSinceStart <= 180) {
+						setIsLive(true); // Live now
+					} else {
+						setIsLive(false);
+					}
+				} else {
+					setIsLive(false);
+				}
+			} else {
+				// If no time specified, show LIVE badge if it's today
+				setIsLive(isToday(eventStart));
+			}
+		};
+
+		checkIfLive();
+
+		// Update every minute to check if event becomes live
+		const interval = setInterval(checkIfLive, 60000);
+		return () => clearInterval(interval);
+	}, [event.date, event.time]);
 
 	const location =
 		typeof event.location === "object" && event.location
@@ -88,6 +133,17 @@ export function EventCard({
 						alt={event.title}
 						className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
 					/>
+
+					{/* LIVE Badge */}
+					{isLive && (
+						<div className="absolute top-3 left-3 z-10 animate-pulse">
+							<Badge className="bg-red-600 text-white border-none px-3 py-1.5 rounded-full text-xs font-black flex items-center gap-1 shadow-lg">
+								<Zap className="w-3 h-3" />
+								LIVE NOW
+							</Badge>
+						</div>
+					)}
+
 					<button
 						onClick={showRemoveButton ? handleRemove : handleBookmark}
 						disabled={isBookmarking}
@@ -104,11 +160,13 @@ export function EventCard({
 							/>
 						)}
 					</button>
+
 					{event.isFree && (
 						<Badge className="absolute bottom-3 left-3 bg-green-500 text-white border-none px-3 py-1 rounded-full text-xs font-black">
 							FREE
 						</Badge>
 					)}
+
 					{event.status === "pending" && (
 						<Badge className="absolute bottom-3 left-3 bg-yellow-500 text-white border-none px-3 py-1 rounded-full text-xs font-black">
 							Pending
