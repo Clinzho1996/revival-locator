@@ -67,7 +67,7 @@ export function Header() {
 	const [isResetLoading, setIsResetLoading] = useState(false);
 
 	const navLinks = [
-		{ href: "/", label: "Find Events" },
+		{ href: "/events", label: "Find Events" },
 		{ href: "/organizers", label: "Organizers" },
 		{ href: "/resources", label: "Resources" },
 		{ href: "/blog", label: "Blog" },

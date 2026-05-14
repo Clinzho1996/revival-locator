@@ -1,6 +1,6 @@
 // app/events/page.tsx
 import { Suspense } from "react";
-import { EventsContent } from "./EventsContent";
+import EventsContent from "./EventsContent";
 
 export default function EventsPage() {
 	return (
