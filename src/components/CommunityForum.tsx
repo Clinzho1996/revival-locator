@@ -84,8 +84,7 @@ export function CommunityForum({
 		if (!eventId) return;
 
 		const socketInstance = io(
-			process.env.NEXT_PUBLIC_SOCKET_URL ||
-				"https://revival-locator-backend.onrender.com",
+			process.env.NEXT_PUBLIC_SOCKET_URL || "https://api.revival-locator.ng",
 			{
 				transports: ["websocket"],
 			},
@@ -225,7 +224,7 @@ export function CommunityForum({
 		setReactingTo(messageId);
 		try {
 			const response = await fetch(
-				`https://revival-locator-backend.onrender.com/api/chat/${messageId}/react`,
+				`https://api.revival-locator.ng/api/chat/${messageId}/react`,
 				{
 					method: "POST",
 					headers: {

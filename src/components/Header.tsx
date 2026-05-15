@@ -159,7 +159,7 @@ export function Header() {
 		setIsResetLoading(true);
 		try {
 			await axios.post(
-				`${process.env.NEXT_PUBLIC_API_URL || "https://revival-locator-backend.onrender.com"}/api/auth/forgot-password`,
+				`${process.env.NEXT_PUBLIC_API_URL || "https://api.revival-locator.ng"}/api/auth/forgot-password`,
 				{ email: resetEmail },
 			);
 			toast.success("OTP sent to your email!");
@@ -181,7 +181,7 @@ export function Header() {
 		setIsResetLoading(true);
 		try {
 			await axios.post(
-				`${process.env.NEXT_PUBLIC_API_URL || "https://revival-locator-backend.onrender.com"}/api/auth/verify-otp`,
+				`${process.env.NEXT_PUBLIC_API_URL || "https://api.revival-locator.ng"}/api/auth/verify-otp`,
 				{ email: resetEmail, otp },
 			);
 			toast.success("OTP verified!");
@@ -207,7 +207,7 @@ export function Header() {
 		setIsResetLoading(true);
 		try {
 			await axios.post(
-				`${process.env.NEXT_PUBLIC_API_URL || "https://revival-locator-backend.onrender.com"}/api/auth/reset-password`,
+				`${process.env.NEXT_PUBLIC_API_URL || "https://api.revival-locator.ng"}/api/auth/reset-password`,
 				{ email: resetEmail, otp, newPassword },
 			);
 			toast.success(

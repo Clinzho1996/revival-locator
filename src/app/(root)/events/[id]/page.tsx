@@ -111,7 +111,7 @@ export default function EventDetailsPage({
 		setIsRegistering(true);
 		try {
 			const response = await axios.post(
-				`https://revival-locator-backend.onrender.com/api/events/${selectedEvent?._id}/register`,
+				`https://api.revival-locator.ng/api/events/${selectedEvent?._id}/register`,
 				{
 					name: registrationData.name,
 					email: registrationData.email,

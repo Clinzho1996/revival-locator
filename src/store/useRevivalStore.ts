@@ -303,7 +303,7 @@ interface RevivalState {
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
-	baseURL: "https://revival-locator-backend.onrender.com/api",
+	baseURL: "https://api.revival-locator.ng/api",
 	headers: {
 		"Content-Type": "application/json",
 	},
