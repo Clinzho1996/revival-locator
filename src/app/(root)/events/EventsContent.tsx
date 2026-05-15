@@ -309,7 +309,7 @@ export default function EventsContent() {
 							</div>
 
 							{/* Price Range */}
-							<div className="mb-6">
+							{/* <div className="mb-6">
 								<label className="font-semibold mb-2 block">
 									Price Range (${priceRange[0]} - ${priceRange[1]})
 								</label>
@@ -321,7 +321,7 @@ export default function EventsContent() {
 									onValueChange={(value) => setPriceRange([value[0], value[1]])}
 									className="mt-4"
 								/>
-							</div>
+							</div> */}
 						</div>
 					</div>
 

@@ -292,13 +292,13 @@ export default function EventDetailsPage({
 										Pending Approval
 									</Badge>
 								)}
-								{selectedEvent.isFree && (
+								{/* {selectedEvent.isFree && (
 									<Badge
 										variant="secondary"
 										className="bg-green-500/20 text-green-700 px-4 py-1.5 text-sm rounded-full">
 										Free Event
 									</Badge>
-								)}
+								)} */}
 							</div>
 							<h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-foreground drop-shadow-sm">
 								{selectedEvent.title}
@@ -453,7 +453,7 @@ export default function EventDetailsPage({
 											</p>
 										</div>
 									</div>
-									{!selectedEvent.isFree && selectedEvent.price && (
+									{/* {!selectedEvent.isFree && selectedEvent.price && (
 										<div className="flex gap-4 items-start">
 											<div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
 												<Info className="w-5 h-5 text-primary" />
@@ -465,7 +465,7 @@ export default function EventDetailsPage({
 												</p>
 											</div>
 										</div>
-									)}
+									)} */}
 								</div>
 								<hr className="border-primary/5" />
 								<Button

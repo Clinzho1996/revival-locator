@@ -26,7 +26,6 @@ import {
 	Calendar as CalendarIcon,
 	CheckCircle,
 	Clock,
-	DollarSign,
 	Image as ImageIcon,
 	Loader2,
 	MapPin,
@@ -420,7 +419,7 @@ export default function CreateEventPage() {
 				</Card>
 
 				{/* Pricing Card */}
-				<Card className="border-primary/5 shadow-md">
+				{/* <Card className="border-primary/5 shadow-md">
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
 							<DollarSign className="h-5 w-5 text-primary" />
@@ -470,7 +469,7 @@ export default function CreateEventPage() {
 							</div>
 						)}
 					</CardContent>
-				</Card>
+				</Card> */}
 
 				{/* Image Card */}
 				<Card className="border-primary/5 shadow-md">

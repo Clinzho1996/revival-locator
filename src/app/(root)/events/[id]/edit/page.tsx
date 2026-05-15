@@ -284,7 +284,7 @@ export default function EditEventPage({
 							</div>
 						</div>
 
-						<div className="space-y-4">
+						{/* <div className="space-y-4">
 							<div className="flex items-center gap-4">
 								<Label htmlFor="isFree">Free Event</Label>
 								<input
@@ -317,7 +317,7 @@ export default function EditEventPage({
 									/>
 								</div>
 							)}
-						</div>
+						</div> */}
 
 						<div className="space-y-2">
 							<Label htmlFor="banner">Image URL</Label>

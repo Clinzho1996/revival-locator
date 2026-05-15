@@ -317,11 +317,11 @@ function FeaturedEventCard({
 					<Badge className="bg-white/20 backdrop-blur-md border border-white/20 text-white px-4 py-1.5 rounded-full font-black text-xs uppercase tracking-widest">
 						{categoryName}
 					</Badge>
-					{event.isFree && (
+					{/* {event.isFree && (
 						<Badge className="bg-green-500/20 backdrop-blur-md border border-green-500/30 text-green-300 px-4 py-1.5 rounded-full font-black text-xs uppercase tracking-widest">
 							Free Event
 						</Badge>
-					)}
+					)} */}
 				</div>
 
 				<div className="max-w-4xl space-y-4">
@@ -376,7 +376,7 @@ function FeaturedEventCard({
 					</div>
 					<div className="flex-grow md:flex md:justify-end">
 						<Link href={`/events/${event._id}`}>
-							<Button
+							{/* <Button
 								size="lg"
 								className="h-16 px-10 rounded-2xl bg-white text-slate-900 hover:bg-primary hover:text-white font-black text-lg transition-all shadow-xl shadow-black/20 group/btn">
 								{event.isFree
@@ -384,6 +384,13 @@ function FeaturedEventCard({
 									: event.price
 										? `Book Now - $${event.price}`
 										: "Register Now"}
+								<ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover/btn:translate-x-2" />
+							</Button> */}
+
+							<Button
+								size="lg"
+								className="h-16 px-10 rounded-2xl bg-white text-slate-900 hover:bg-primary hover:text-white font-black text-lg transition-all shadow-xl shadow-black/20 group/btn">
+								Register Now
 								<ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover/btn:translate-x-2" />
 							</Button>
 						</Link>

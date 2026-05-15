@@ -210,7 +210,7 @@ export function EventCard({
 						</div>
 					</div>
 
-					{!event.isFree && event.price && (
+					{/* {!event.isFree && event.price && (
 						<div className="pt-2">
 							<p className="text-2xl font-black text-primary">
 								${event.price}
@@ -220,7 +220,7 @@ export function EventCard({
 								</span>
 							</p>
 						</div>
-					)}
+					)} */}
 				</div>
 			</div>
 		</Link>

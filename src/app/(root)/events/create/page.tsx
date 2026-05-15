@@ -25,7 +25,6 @@ import {
 	ArrowLeft,
 	Calendar as CalendarIcon,
 	Clock,
-	DollarSign,
 	Image as ImageIcon,
 	Loader2,
 	MapPin,
@@ -442,7 +441,7 @@ export default function CreateEventPage() {
 							</div>
 
 							{/* Pricing Information */}
-							<div className="space-y-6 pt-6 border-t border-primary/10">
+							{/* <div className="space-y-6 pt-6 border-t border-primary/10">
 								<h3 className="text-lg font-semibold flex items-center gap-2">
 									<DollarSign className="w-5 h-5 text-primary" />
 									Pricing
@@ -490,7 +489,7 @@ export default function CreateEventPage() {
 										</div>
 									)}
 								</div>
-							</div>
+							</div> */}
 
 							{/* Event Image */}
 							<div className="space-y-6 pt-6 border-t border-primary/10">
