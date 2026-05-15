@@ -129,7 +129,7 @@ export function Hero() {
 				className="absolute inset-0 z-0"
 				style={{
 					backgroundImage:
-						'linear-gradient(to bottom, rgba(2, 6, 23, 0.85), rgba(185, 28, 28, 0.2)), url("https://plus.unsplash.com/premium_photo-1661377118520-287ec60a32f3?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8d29yc2hpcHxlbnwwfHwwfHx8MA%3D%3D")',
+						'linear-gradient(to bottom, rgba(2, 6, 23, 0.85), rgba(185, 28, 28, 0.2)), url("/images/rev.jpg")',
 					backgroundSize: "cover",
 					backgroundPosition: "center",
 					backgroundAttachment: "fixed",
